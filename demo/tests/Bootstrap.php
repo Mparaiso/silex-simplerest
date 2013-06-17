@@ -23,6 +23,8 @@ class Bootstrap
             "driver" => "pdo_sqlite",
             "memory" => TRUE,
         );
+        $app["exception_handler"]->disable();
+        $app["session.test"] = TRUE;
         $app->boot();
         self::createDatabase($app["db"]);
         return $app;
@@ -36,6 +38,7 @@ class Bootstrap
     static function createDatabase(Connection $conn)
     {
         $schema = $conn->getSchemaManager();
+
         $category = new Table("category");
         $category->addColumn("id", "integer", array("Autoincrement" => TRUE));
         $category->addColumn("name", "string", array("length" => 128, "notnull" => TRUE));
@@ -55,9 +58,8 @@ class Bootstrap
         $snippet->addColumn("updated_at", "datetime", array("Notnull" => TRUE));
         $snippet->setPrimaryKey(array("id"));
         $snippet->addForeignKeyConstraint($category, array("category_id"), array("id"));
-
-        $schema->createTable($category);
-        $schema->createTable($snippet);
+        $schema->dropAndCreateTable($category);
+        $schema->dropAndCreateTable($snippet);
 
     }
 }

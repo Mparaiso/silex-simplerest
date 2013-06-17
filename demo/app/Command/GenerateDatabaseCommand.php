@@ -8,8 +8,8 @@ namespace Command;
 
 use Doctrine\DBAL\Connection;
 use Doctrine\DBAL\Schema\Table;
-use Symfony\Component\Console\Input\InputArgument,
-    Symfony\Component\Console;
+use Symfony\Component\Console\Input\InputArgument;
+use Symfony\Component\Console;
 
 /**
  * Task for executing arbitrary SQL that can come from a file or directly from
@@ -31,15 +31,17 @@ class GenerateDatabaseCommand extends Console\Command\Command
     protected function configure()
     {
         $this
-        ->setName('project:database:generate')
-        ->setDescription('Generate the database for the project ')
-        ->setHelp(<<<EOT
+            ->setName('project:database:generate')
+            ->setDescription('Generate the database for the project ')
+            ->setHelp(<<<EOT
 Generate the database for the project
 EOT
-        );
+            );
     }
 
     /**
+     * FR : Crée la base de donnée<br>
+     * EN : create database
      * @see Console\Command\Command
      */
     protected function execute(Console\Input\InputInterface $input, Console\Output\OutputInterface $output)
@@ -61,6 +63,7 @@ EOT
         $snippet->addColumn("description", "string", array(
             "length" => 256, "notnull" => TRUE
         ));
+
         $snippet->addColumn("content", "text", array("Notnull" => TRUE));
         $snippet->addColumn("prettyContent", "text", array("Notnull" => TRUE));
         $snippet->addColumn("category_id", "integer", array("Notnull" => TRUE));
@@ -69,9 +72,10 @@ EOT
         $snippet->setPrimaryKey(array("id"));
         $snippet->addForeignKeyConstraint($category, array("category_id"), array("id"));
 
-        $schema->createTable($category);
-        $schema->createTable($snippet);
-
+        if (!$schema->tablesExist(array("category")))
+            $schema->createTable($category);
+        if (!$schema->tablesExist(array("snippet")))
+            $schema->createTable($snippet);
         $output->writeln("The Database has been generated ");
 
     }

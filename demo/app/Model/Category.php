@@ -3,21 +3,14 @@
 namespace Model;
 
 
+use Mparaiso\SimpleRest\Model\AbstractModel;
+
 class Category extends AbstractModel
 {
 
 
     protected $id;
     protected $name;
-
-    function __construct(array $values = array())
-    {
-        foreach ($values as $key => $value) {
-            if (property_exists($this, $key)) {
-                $this->$key = $value;
-            }
-        }
-    }
 
     public function getId()
     {

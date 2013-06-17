@@ -2,11 +2,13 @@
 
 
 namespace Model;
+use Mparaiso\SimpleRest\Model\AbstractModel;
+
 /**
  * Class Snippet
  * @package Model
  */
-class Snippet  extends AbstractModel
+class Snippet extends AbstractModel 
 {
     protected $id;
     protected $title;
@@ -16,16 +18,6 @@ class Snippet  extends AbstractModel
     protected $created_at;
     protected $updated_at;
     protected $category_id;
-
-    function __construct(array $values = array())
-    {
-        foreach ($values as $key => $value) {
-            if (property_exists($this, $key)) {
-                $this->$key = $value;
-            }
-        }
-
-    }
 
 
     public function getTitle()

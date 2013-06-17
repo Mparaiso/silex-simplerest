@@ -4,7 +4,7 @@ use Doctrine\DBAL\Connection;
 use Mparaiso\Provider\ConsoleServiceProvider;
 use Mparaiso\SimpleRest\Controller\Controller;
 use Mparaiso\SimpleRest\Provider\DBALProvider;
-use Service\SnippetService;
+use Mparaiso\SimpleRest\Service\Service;
 use Silex\Application;
 use Silex\Provider\DoctrineServiceProvider;
 use Silex\Provider\MonologServiceProvider;
@@ -54,9 +54,8 @@ class Config implements \Silex\ServiceProviderInterface
             ));
         });
 
-
         $app["snippet_service"] = $app->share(function ($app) {
-            return new SnippetService($app["snippet_provider"]);
+            return new Service($app["snippet_provider"]);
         });
 
         $app["snippet_controller"] = $app->share(function ($app) {
@@ -69,6 +68,28 @@ class Config implements \Silex\ServiceProviderInterface
             return $controller;
         });
 
+        $app['category_provider'] = $app->share(function ($app) {
+            return new DBALProvider($app["db"], array(
+                "model" => '\Model\Category',
+                "name"  => "category",
+                "id"    => "id"
+            ));
+        });
+
+        $app["category_service"] = $app->share(function ($app) {
+            return new Service($app["category_provider"]);
+        });
+
+        $app["category_controller"] = $app->share(function ($app) {
+            $controller = new Controller(array(
+                "resource"          => "category",
+                "resourcePluralize" => "categories",
+                "model"             => '\Model\Category',
+                "service"           => $app["category_service"]
+            ));
+            return $controller;
+        });
+
 
     }
 
@@ -77,7 +98,18 @@ class Config implements \Silex\ServiceProviderInterface
      */
     public function boot(Application $app)
     {
-        $app->mount("/", $app["snippet_controller"]);
+        $app->get("/", function () {
+            $cache = new \Doctrine\Common\Cache\ApcCache();
+            if (!$cache->contains("_index")) {
+                $index = require __DIR__ . '/../web/static/js/snippetd/partials/index.html';
+                $cache->save("_index", $index, 2);
+            }
+            $content = $cache->fetch("_index");
+            return $content;
+        });
+        $app->mount("/api/", $app["snippet_controller"]);
+        $app->mount("/api/", $app["category_controller"]);
+
 
     }
 }

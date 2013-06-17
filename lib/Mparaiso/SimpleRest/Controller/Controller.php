@@ -27,6 +27,12 @@ class Controller implements ControllerProviderInterface
     public $updateMethod = "update";
     protected $deleteMethod = "remove";
     protected $id = "id";
+    protected $indexVerb = "get";
+    protected $readVerb = "get";
+    protected $createVerb = "post";
+    protected $updateVerb = "post";
+    protected $deleteVerb = "delete";
+
     protected $resource;
     protected $resourcePluralize;
     protected $service;
@@ -42,6 +48,7 @@ class Controller implements ControllerProviderInterface
     protected $afterUpdate;
     protected $beforeIndex;
     protected $afterIndex;
+
 
     function __construct(array $parameters = array())
     {
@@ -162,7 +169,7 @@ class Controller implements ControllerProviderInterface
             $response = $this->makeResponse($app,
                 array("status"  => "error",
                       "code"    => $e->getStatusCode(),
-                      "message" => $e->getMessage()),404);
+                      "message" => $e->getMessage()), 404);
         } catch (Exception $e) {
             $response = $this->makeResponse($app,
                 array("status"  => "error",
@@ -269,12 +276,17 @@ class Controller implements ControllerProviderInterface
         $controllers = $app["controllers_factory"];
         /* @var \Silex\ControllerCollection $controllers */
 
-        $controllers->post("/$this->resource.{_format}", array($this, "create"));
-        $controllers->put("/$this->resource/{id}.{_format}", array($this, "update"));
-        $controllers->delete("/$this->resource/{id}.{_format}", array($this, "delete"));
+        $controllers->match("/$this->resource.{_format}", array($this, "create"))
+            ->method($this->createVerb);
+        $controllers->match("/$this->resource/{id}.{_format}", array($this, "update"))
+            ->method($this->updateVerb);
+        $controllers->match("/$this->resource/{id}.{_format}", array($this, "delete"))
+            ->method($this->deleteVerb);
 
-        $controllers->get("/$this->resource.{_format}", array($this, "index"));
-        $controllers->get("/$this->resource/{id}.{_format}", array($this, "read"));
+        $controllers->match("/$this->resource.{_format}", array($this, "index"))
+            ->method($this->indexVerb);
+        $controllers->match("/$this->resource/{id}.{_format}", array($this, "read"))
+            ->method($this->readVerb);
         $controllers->value("_format", "json")->assert("_format", "xml|json");
         return $controllers;
     }

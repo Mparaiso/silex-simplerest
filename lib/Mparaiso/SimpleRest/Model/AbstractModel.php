@@ -31,6 +31,8 @@ abstract class AbstractModel implements \JsonSerializable
         return $data;
     }
 
+
+
     /**
      * (PHP 5 &gt;= 5.4.0)<br/>
      * Specify data which should be serialized to JSON

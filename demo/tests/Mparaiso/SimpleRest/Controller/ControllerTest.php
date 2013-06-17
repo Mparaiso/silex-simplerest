@@ -45,14 +45,14 @@ class ControllerTest extends WebTestCase
     {
         // on crée un snippet
         $client = $this->createClient();
-        $crawler = $client->request("POST", "/snippet", array(), array(),
+        $crawler = $client->request("POST", "/api/snippet", array(), array(),
             array("HTTP_Content-Type" => "application/json"), json_encode($snippet));
         $content = $client->getResponse()->getContent();
         $json = json_decode($content, TRUE);
         $this->assertEquals(array("status" => "ok", "id" => 1), $json);
         $id = $json["id"];
         // or retrouve la liste des snippets
-        $client->request("GET", "/snippet");
+        $client->request("GET", "/api/snippet");
         $content = $client->getResponse()->getContent();
         $json = json_decode($content, TRUE);
         $this->assertCount(1, $json['snippets']);
@@ -60,26 +60,26 @@ class ControllerTest extends WebTestCase
         // on met à jour un snippet
         $newTitle = "new title";
         $json['snippets'][0]["title"] = $newTitle;
-        $client->request("PUT", "/snippet/1", array(), array(), array(),
+        $client->request("POST", "/api/snippet/1", array(), array(), array(),
             json_encode($json['snippets'][0]));
         $content = $client->getResponse()->getContent();
         $this->assertTrue($client->getResponse()->isOk());
         $json = json_decode($content, TRUE);
         $this->assertEquals(1, $json['rowsAffected']);
         // on retrouve l'élement mis à jour
-        $client->request("GET", "/snippet/1");
+        $client->request("GET", "/api/snippet/1");
         $content = $client->getResponse()->getContent();
         $this->assertTrue($client->getResponse()->isOk());
         $json = json_decode($content, TRUE);
         $this->assertEquals($newTitle, $json['snippet']["title"]);
         // on efface un snippet
-        $client->request("DELETE", "/snippet/1");
+        $client->request("DELETE", "/api/snippet/1");
         $content = $client->getResponse()->getContent();
         $this->assertTrue($client->getResponse()->isOk());
         $json = json_decode($content, TRUE);
         $this->assertEquals(1, $json["rowsAffected"]);
         // on s'assure que le snippet n'existe plus
-        $client->request("GET", "/snippet/1");
+        $client->request("GET", "/api/snippet/1");
         $content = $client->getResponse()->getContent();
         $this->assertFalse($client->getResponse()->isOk());
         $this->assertEquals(404, $client->getResponse()->getStatusCode());

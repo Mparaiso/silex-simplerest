@@ -6,6 +6,7 @@
          convertWarningsToExceptions="true"
          processIsolation="false"
          stopOnFailure="false"
+         debug="true"
          syntaxCheck="false">
     <testsuites>
         <testsuite name="Simple Rest Demo test suite">

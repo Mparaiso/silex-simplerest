@@ -1,7 +1,0 @@
-{
-  "volo": {
-    "dependencies": {
-      "angular": "github:angular/angular.js/v1.1.5"
-    }
-  }
-}

@@ -159,7 +159,12 @@ class Controller implements ControllerProviderInterface
     function create(Request $req, Application $app)
     {
         try {
-            $model = new $this->model(json_decode($req->getContent(), TRUE));
+            $data = $req->request->all();
+            if ($data[$this->id]) {
+                unset($data[$this->id]);
+            }
+//            $model = new $this->model(json_decode($req->getContent(), TRUE));
+            $model = new $this->model($data);
             $app["dispatcher"]->dispatch(
                 $this->beforeCreate, new GenericEvent($model, array("request" => $req, "app" => $app)));
             $id = $this->service->{$this->createMethod}($model);

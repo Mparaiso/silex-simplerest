@@ -56,6 +56,7 @@ class ControllerTest extends WebTestCase
         $json = json_decode($content, TRUE);
         $this->assertCount(1, $json);
         $this->assertEquals("snippet1", $json[0]["title"]);
+        // on retrouve l'élement mis à jour
         // on met à jour un snippet
         $json["title"] = "new title";
         $client->request("PUT", "/snippet/1", array(), array(), array(), json_encode($json));

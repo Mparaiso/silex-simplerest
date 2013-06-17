@@ -4,11 +4,16 @@
  * @author Mparaiso <mparaiso@online.fr>
  */
 
-$autoload = require __DIR__."/../vendor/autoload.php";
+$filename = __DIR__ . preg_replace('#(\?.*)$#', '', $_SERVER['REQUEST_URI']);
+if (php_sapi_name() === 'cli-server' && is_file($filename)) {
+    return FALSE;
+}
 
-$autoload->add("",__DIR__."/../app");
-$autoload->add("",__DIR__."/../../lib");
+$autoload = require __DIR__ . "/../vendor/autoload.php";
 
-$app = new App();
+$autoload->add("", __DIR__ . "/../app");
+$autoload->add("", __DIR__ . "/../../lib");
+
+$app = new App(array("debug"=>true));
 
 $app->run();

@@ -30,7 +30,7 @@ class Config implements \Silex\ServiceProviderInterface
             )
         ));
 
-        $app["db"]=$app->share($app->extend("db",function($db,$app){
+        $app["db"] = $app->share($app->extend("db", function ($db, $app) {
             /*  @var Connection $db */
             return $db;
         }));
@@ -61,9 +61,10 @@ class Config implements \Silex\ServiceProviderInterface
 
         $app["snippet_controller"] = $app->share(function ($app) {
             $controller = new Controller(array(
-                "resource" => "snippet",
-                "model"    => '\Model\Snippet',
-                "service"  => $app["snippet_service"]
+                "resource"          => "snippet",
+                "resourcePluralize" => "snippets",
+                "model"             => '\Model\Snippet',
+                "service"           => $app["snippet_service"]
             ));
             return $controller;
         });

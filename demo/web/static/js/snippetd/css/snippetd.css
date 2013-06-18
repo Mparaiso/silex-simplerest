@@ -44,7 +44,7 @@ small {
   font-size: 50%;
 }
 h1 {
-  font-family: Georgia,serif;
+  font-family: Georgia, serif;
   font-size: 190%;
   margin: 0;
   padding-top: 15px;
@@ -62,7 +62,6 @@ h1 a {
   width: 100%;
   max-width: 960px;
   min-width: 590px;
-  position: fixed;
   top: 0;
   background: #494949;
 }
@@ -78,7 +77,7 @@ button {
   padding: 4px 5px;
   border: 1px solid #626262;
   background-image: linear-gradient(#7b7b7b, #6e6e6e);
-  box-shadow: inset 1px 1px 2px #7f7f7f, 1px 1px 5px #6e6e6e;
+  box-shadow: inset 1px 1px 2px #7F7F7F;
 }
 button a {
   color: #eeeeee;
@@ -94,11 +93,10 @@ button[disabled] {
   border: none;
 }
 input {
-  color: #DADADA;
+  color: #494949;
   font-weight: bold;
 }
 input[type=text] {
-  color: #494949;
   font-weight: normal;
   border: 1px solid #626262;
 }
@@ -111,10 +109,11 @@ input[type=text].search-menu {
   width: 50%;
 }
 input[type=button] {
+  color: #ffffff;
   cursor: pointer;
   border: 1px solid #626262;
-  background-image: linear-gradient(#7b7b7b, #6e6e6e);
-  box-shadow: inset 1px 1px 2px #7f7f7f, 1px 1px 1px #464646;
+  background: linear-gradient(#7b7b7b, #6e6e6e);
+  box-shadow: inset 1px 1px 2px #7F7F7F;
   text-shadow: -1px -1px #494949;
   padding: 3px 5px;
 }
@@ -122,9 +121,24 @@ input[type=button]:hover {
   background-image: linear-gradient(#de1d2f, #b01725);
   box-shadow: inset 1px 1px 3px #777;
 }
-input[type=button][disabled] {
-  background: #c71a2a;
+input[disabled] {
+  background: #c71a2a !important;
   border: none;
+  cursor: not-allowed;
+}
+/**
+ * VALIDATION
+ *
+ */
+input.ng-invalid,
+select.ng-invalid,
+textarea.ng-invalid {
+  border: 2px solid #c71a2a !important;
+}
+input.ng-valid.ng-dirty,
+select.ng-valid.ng-dirty,
+textarea.ng-valid.ng-dirty {
+  border: 2px solid #72c385 !important;
 }
 .container {
   max-width: 960px;
@@ -188,17 +202,18 @@ select:before {
 }
 .snippet-list {
   position: relative;
-  margin-top: 133px;
+  margin-top: 0px;
   height: 100%;
   padding: 0;
   width: 100%;
+  min-height: 640px;
 }
 .snippet-list .snippet-menu {
   padding: 5px;
   padding-left: 10px;
 }
 .snippet-edit {
-  margin-top: 133px;
+  margin-top: 0px;
 }
 .snippet-edit .snippet-edit-form {
   padding: 5px;
@@ -259,6 +274,8 @@ select:before {
 }
 .snippet-item .snippet-content {
   width: 100%;
+  max-height: 400px;
+  overflow: auto;
   padding-top: 7px;
   background: #ffffff;
   font-family: monospace;
@@ -270,6 +287,9 @@ select:before {
   -ms-user-select: none;
   padding-right: 0;
   padding-bottom: 5px;
+}
+.snippet-read .snippet-item .snippet-content {
+  max-height: auto !important;
 }
 .snippet-item .snippet-content pre {
   padding-left: 15px;
@@ -296,7 +316,7 @@ select:before {
   padding-left: 35px;
 }
 .options {
-  margin-top: 133px;
+  margin-top: 0px;
 }
 .options fieldset {
   border: none;
@@ -312,7 +332,6 @@ select:before {
 .footer {
   max-width: 960px;
   background: linear-gradient(#aaaaaa, #9d9d9d);
-  position: fixed;
   border-top: 1px solid #494949;
   box-shadow: inset 0px 1px 1px #d0d0d0;
   bottom: 0px;
@@ -352,9 +371,11 @@ select:before {
 }
 ::-webkit-scrollbar-corner {
   /* 6 */
+
 }
 ::-webkit-resizer {
   /* 7 */
+
 }
 .selection-disabled {
   -webkit-touch-callout: none;
@@ -372,6 +393,10 @@ select:before {
   -moz-user-select: none;
   -ms-user-select: none;
 }
+/**
+ * ANIMATION
+ *
+ */
 .si-leave,
 .si-enter,
 .si-move {

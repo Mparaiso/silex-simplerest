@@ -1,4 +1,14 @@
 {
+    "name": "mparaiso/silex-simplerest",
+    "description": "Restfull controller for silex",
+    "keywords": [
+        "silex",
+        "extensions",
+        "rest",
+        "restfull"
+    ],
+    "homepage": "https://github.com/Mparaiso/silex-simplerest",
+    "license": "LGPL",
     "autoload":{
         "psr-0":{
             "Mparaiso":"lib"

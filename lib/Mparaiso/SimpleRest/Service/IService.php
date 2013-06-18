@@ -11,6 +11,8 @@ interface IService
 
     function findBy(array $where, array $order, $limit, $offset);
 
+    function findOneBy(array $where,array $order);
+
     function remove(AbstractModel $model);
 
     function create(AbstractModel $model);

@@ -10,6 +10,7 @@
         "symfony/monolog-bridge": "2.3.*",
         "symfony/doctrine-bridge": "2.3.*",
         "twig/twig": "*",
-        "symfony/twig-bridge": "2.3.*"
+        "symfony/twig-bridge": "2.3.*",
+        "mparaiso/crudserviceprovider":"*@dev"
     }
 }

@@ -15,24 +15,39 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 
 /**
  * Class Controller
+ * FR : Controleur générique pour une interface de type REST.
  * @package Mparaiso\SimpleRest\Controller
  */
 class Controller implements ControllerProviderInterface
 {
+    /**
+     * properties
+     */
+    const SUCCESS = 200;
+    const RESOURCE_CREATED = 201;
+    const SUCCESS_NO_RETURN = 204;
+    const VALIDATION_ERROR = 400;
+    const NOT_AUTHENTICATED = 401;
+    const WRONG_CREDENTIALS = 403;
+    const NOT_FOUND = 404;
+    const OTHER_ERROR = 500;
 
     public $findByMethod = "findBy";
     protected $findAllMethod = "findAll";
     protected $findMethod = "find";
     protected $createMethod = "create";
-    public $updateMethod = "update";
+    protected $updateMethod = "update";
     protected $deleteMethod = "remove";
+    protected $countMethod = "count";
     protected $id = "id";
     protected $indexVerb = "get";
     protected $readVerb = "get";
     protected $createVerb = "post";
     protected $updateVerb = "post";
     protected $deleteVerb = "delete";
-
+    protected $allow = array("create", "update", "read", "index", "delete", "count");
+    protected $defaultFormat = "json";
+    protected $formats = "json|xml";
     protected $resource;
     protected $resourcePluralize;
     protected $service;
@@ -49,7 +64,11 @@ class Controller implements ControllerProviderInterface
     protected $beforeIndex;
     protected $afterIndex;
 
-
+    /**
+     * FR : constructeur<br>
+     * EN : constructor<br>
+     * @param array $parameters
+     */
     function __construct(array $parameters = array())
     {
         foreach ($parameters as $key => $value) {
@@ -88,7 +107,12 @@ class Controller implements ControllerProviderInterface
             $this->afterIndex = $this->resource . "_after_index";
         }
         if ($this->criteria == NULL) {
-            $this->criteria = array_keys(get_class_vars($this->model));
+            $this->criteria = array();
+            $reflc = new \ReflectionClass($this->model);
+            $props = $reflc->getProperties();
+            foreach ($props as $prop) {
+                array_push($this->criteria, $prop->getName());
+            }
         }
         if ($this->resource && $this->resourcePluralize == NULL) {
             $this->resourcePluralize = $this->resource . "s";
@@ -134,7 +158,9 @@ class Controller implements ControllerProviderInterface
             $app["dispatcher"]->dispatch(
                 $this->afterIndex, new GenericEvent($collection, array("request" => $req, "app" => $app)));
             $response = $this->makeResponse($app,
-                array("status" => "ok", "$this->resourcePluralize" => $collection));
+                array("status"                   => self::SUCCESS,
+                      "message"                  => count($collection) . " $this->resourcePluralize found",
+                      "$this->resourcePluralize" => $collection));
         } catch (Exception $e) {
             $response = $this->makeResponse(
                 $app, array("status" => "error", "message" => $e->getMessage()), 500);
@@ -199,9 +225,12 @@ class Controller implements ControllerProviderInterface
             $id = $this->service->{$this->createMethod}($model);
             $app["dispatcher"]->dispatch(
                 $this->afterCreate, new GenericEvent($model, array("request" => $req, "app" => $app, "id" => $id)));
-            $response = $app->json(array("status" => "ok", "id" => $id));
+            $response = $app->json(array(
+                "status"  => self::RESOURCE_CREATED,
+                "message" => "$this->resource with $this->is $id created with.",
+                "id"      => $id));
         } catch (Exception $e) {
-            $response = $app->json(array("status" => "error", "message" => $e->getMessage()), 500);
+            $response = $app->json(array("status" => "error", "message" => $e->getMessage()), self::OTHER_ERROR);
         }
         return $response;
     }
@@ -223,12 +252,15 @@ class Controller implements ControllerProviderInterface
                 $data[$this->id] = $id;
                 $changes = new $this->model($data);
                 $app["dispatcher"]->dispatch(
-                    $this->beforeUpdate, new GenericEvent($exists, array("app" => $app)));
+                    $this->beforeUpdate, new GenericEvent($changes, array("$this->id" => $id, "app" => $app)));
                 $rowsAffected = $this->service->{$this->updateMethod}($changes, array("$this->id" => $id));
                 $app["dispatcher"]->dispatch(
-                    $this->beforeUpdate, new GenericEvent($id, array("app" => $app)));
+                    $this->beforeUpdate, new GenericEvent($changes, array("$this->id" => $id, "app" => $app)));
                 $response = $this->makeResponse($app,
-                    array("message" => "ok", "rowsAffected" => $rowsAffected));
+                    array(
+                        "status"       => self::SUCCESS,
+                        "message"      => "$this->resource with $this->id $id updated.",
+                        "rowsAffected" => $rowsAffected));
             } else {
                 throw new Exception("resource $this->resource not found");
             }
@@ -257,13 +289,44 @@ class Controller implements ControllerProviderInterface
                 $rowsAffected = $this->service->{$this->deleteMethod}($model);
                 $app["dispatcher"]->dispatch(
                     $this->afterDelete, new GenericEvent($model, array("app" => $app, "request" => $req)));
+
+                $response = $this->makeResponse($app,
+                    array("status"       => self::SUCCESS,
+                          "message"      => "$rowsAffected $this->resourcePluralize deleted.",
+                          "rowsAffected" => $rowsAffected), self::SUCCESS);
+            } else {
+                $response = $this->makeResponse($app,
+                    array("status" => self::NOT_FOUND,), self::NOT_FOUND);
             }
-            $response = $this->makeResponse($app,
-                array("message"      => "ok",
-                      "rowsAffected" => $rowsAffected));
         } catch (Exception $e) {
             $response = $this->makeResponse($app,
-                array("status" => "error", "message" => $e->getMessage()), 500);
+                array("status" => "error", "message" => $e->getMessage()), self::OTHER_ERROR);
+        }
+        return $response;
+    }
+
+    function count(Request $req, Application $app)
+    {
+        try {
+            $criteria = array();
+            foreach ($this->criteria as $value) {
+                if ($req->query->get($value) != NULL) {
+                    $criteria[$value] = $req->query->get($value);
+                }
+            }
+            $count = $this->service->{$this->countMethod}($criteria);
+
+            $response = $this->makeResponse($app, array("status" => self::SUCCESS, "count" => $count));
+        } catch (Exception $e) {
+            if ($app["debug"] == TRUE) {
+                $message = $e->getMessage();
+            } else {
+                $message = "error";
+            }
+
+            $response = $this->makeResponse($app,
+                array("status" => self::SUCCESS, "message" => $message), self::OTHER_ERROR);
+
         }
         return $response;
     }
@@ -275,19 +338,24 @@ class Controller implements ControllerProviderInterface
     {
         $controllers = $app["controllers_factory"];
         /* @var \Silex\ControllerCollection $controllers */
-
-        $controllers->match("/$this->resource.{_format}", array($this, "create"))
-            ->method($this->createVerb);
-        $controllers->match("/$this->resource/{id}.{_format}", array($this, "update"))
-            ->method($this->updateVerb);
-        $controllers->match("/$this->resource/{id}.{_format}", array($this, "delete"))
-            ->method($this->deleteVerb);
-
-        $controllers->match("/$this->resource.{_format}", array($this, "index"))
-            ->method($this->indexVerb);
-        $controllers->match("/$this->resource/{id}.{_format}", array($this, "read"))
-            ->method($this->readVerb);
-        $controllers->value("_format", "json")->assert("_format", "xml|json");
+        if (in_array("create", $this->allow))
+            $controllers->match("/$this->resource.{_format}", array($this, "create"))
+                ->method($this->createVerb);
+        if (in_array("count", $this->allow))
+            $controllers->match("/$this->resource/count.{_format}", array($this, "count"));
+        if (in_array("update", $this->allow))
+            $controllers->match("/$this->resource/{id}.{_format}", array($this, "update"))
+                ->method($this->updateVerb);
+        if (in_array("delete", $this->allow))
+            $controllers->match("/$this->resource/{id}.{_format}", array($this, "delete"))
+                ->method($this->deleteVerb);
+        if (in_array("index", $this->allow))
+            $controllers->match("/$this->resource.{_format}", array($this, "index"))
+                ->method($this->indexVerb);
+        if (in_array("read", $this->allow))
+            $controllers->match("/$this->resource/{id}.{_format}", array($this, "read"))
+                ->method($this->readVerb);
+        $controllers->value("_format", $this->defaultFormat)->assert("_format", $this->formats);
         return $controllers;
     }
 

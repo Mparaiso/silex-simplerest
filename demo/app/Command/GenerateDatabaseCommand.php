@@ -52,9 +52,11 @@ EOT
 
         $schema = $conn->getSchemaManager();
         $category = new Table("category");
-        $category->addColumn("id", "integer", array("Autoincrement" => TRUE));
+        $category->addColumn("id", "integer", array("Autoincrement" => TRUE,"Unique"=>true));
+
         $category->addColumn("name", "string", array("length" => 128, "notnull" => TRUE));
         $category->setPrimaryKey(array("id"));
+        $category->addIndex(array("name"));
 
         $snippet = new Table("snippet");
         $snippet->addColumn("id", "integer", array("Autoincrement" => TRUE));
@@ -72,10 +74,10 @@ EOT
         $snippet->setPrimaryKey(array("id"));
         $snippet->addForeignKeyConstraint($category, array("category_id"), array("id"));
 
-        if (!$schema->tablesExist(array("category")))
-            $schema->createTable($category);
-        if (!$schema->tablesExist(array("snippet")))
-            $schema->createTable($snippet);
+        //if (!$schema->tablesExist(array("category")))
+            $schema->dropAndCreateTable($category);
+        //if (!$schema->tablesExist(array("snippet")))
+            $schema->dropAndCreateTable($snippet);
         $output->writeln("The Database has been generated ");
 
     }

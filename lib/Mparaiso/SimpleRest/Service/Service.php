@@ -22,9 +22,17 @@ class Service implements IService
         return $this->provider->find($id);
     }
 
-    function findBy(array $where = array(), array $order = array(), $limit, $offset)
+    function findBy(array $where = array(), array $order = array(), $limit = NULL, $offset = NULL)
     {
         return $this->provider->findBy($where, $order, $limit, $offset);
+    }
+
+    function findOneBy(array $where = array(), array $order = array())
+    {
+        $result = $this->findBy($where, $order, 1);
+        if (is_array($result)) {
+            return $result[0];
+        }
     }
 
     function remove(AbstractModel $model)

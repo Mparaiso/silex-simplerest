@@ -18,4 +18,12 @@ interface IProvider
     function update(AbstractModel $model, array $where);
 
     function count(array $where);
+
+    function getConnection();
+
+    function getName();
+
+    function getModel();
+
+    function getId();
 }

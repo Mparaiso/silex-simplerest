@@ -7,6 +7,7 @@ namespace Mparaiso\SimpleRest\Controller;
 
 use Exception;
 use Silex\Application;
+use Silex\ControllerCollection;
 use Silex\ControllerProviderInterface;
 use Symfony\Component\EventDispatcher\GenericEvent;
 use Symfony\Component\HttpFoundation\Request;
@@ -338,6 +339,7 @@ class Controller implements ControllerProviderInterface
     {
         $controllers = $app["controllers_factory"];
         /* @var \Silex\ControllerCollection $controllers */
+        $this->addCustomRoutes($controllers);
         if (in_array("create", $this->allow))
             $controllers->match("/$this->resource.{_format}", array($this, "create"))
                 ->method($this->createVerb);
@@ -359,6 +361,9 @@ class Controller implements ControllerProviderInterface
         return $controllers;
     }
 
+    public function addCustomRoutes(ControllerCollection $controllers){
+
+    }
     /**
      * FR : selon le format demandé , renvoyer du XML ou du JSON<br>
      * EN : given a format request , return a xml or a json response

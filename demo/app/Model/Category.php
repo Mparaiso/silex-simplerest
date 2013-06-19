@@ -33,4 +33,8 @@ class Category extends AbstractModel
     }
 
 
+    function __toString()
+    {
+        return $this->name;
+    }
 }

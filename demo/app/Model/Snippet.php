@@ -90,9 +90,18 @@ class Snippet extends AbstractModel
         $this->category_id = $category_id;
     }
 
+    public function setId($id)
+    {
+        $this->id = $id;
+    }
+
     public function getId()
     {
         return $this->id;
     }
 
+    function __toString()
+    {
+        return $this->title;
+    }
 }

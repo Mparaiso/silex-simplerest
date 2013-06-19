@@ -9,7 +9,9 @@ use Mparaiso\SimpleRest\Service\IService;
 
 class Service implements IService
 {
-
+    /**
+     * @var \Mparaiso\SimpleRest\Provider\IProvider
+     */
     protected $provider;
 
     function __construct(IProvider $provider)

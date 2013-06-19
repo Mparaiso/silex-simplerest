@@ -44,4 +44,6 @@ abstract class AbstractModel implements \JsonSerializable
     {
         return $this->toArray();
     }
+
+    abstract function __toString();
 }

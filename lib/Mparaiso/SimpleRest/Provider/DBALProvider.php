@@ -116,8 +116,7 @@ class DBALProvider implements IProvider
     /**
      * @return \Doctrine\DBAL\Connection
      */
-    public
-    function getConnection()
+    public function getConnection()
     {
         return $this->connection;
     }
@@ -125,17 +124,15 @@ class DBALProvider implements IProvider
     /**
      * @return string
      */
-    public
-    function getName()
+    public function getName()
     {
         return $this->name;
     }
 
     /**
-     * @return object
+     * @return string
      */
-    public
-    function getModel()
+    public function getModel()
     {
         return $this->model;
     }
@@ -143,8 +140,7 @@ class DBALProvider implements IProvider
     /**
      * @return string
      */
-    public
-    function getId()
+    public function getId()
     {
         return $this->id;
     }

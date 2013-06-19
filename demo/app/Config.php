@@ -1,27 +1,35 @@
 <?php
 
-use Command\AddCategoriesCommand;
-use Command\AddDefaultSnippetsCommand;
-use Command\GenerateDatabaseCommand;
-use Doctrine\DBAL\Connection;
-use Mparaiso\Provider\ConsoleServiceProvider;
-use Mparaiso\SimpleRest\Controller\Controller;
-use Mparaiso\SimpleRest\Provider\DBALProvider;
-use Mparaiso\SimpleRest\Service\Service;
-use Service\SnippetService;
-use Silex\Application;
-use Silex\Provider\DoctrineServiceProvider;
-use Silex\Provider\MonologServiceProvider;
-use Silex\Provider\SerializerServiceProvider;
-use Symfony\Component\EventDispatcher\GenericEvent;
-use Symfony\Component\HttpFoundation\Request;
-
 
 /**
  * Class Config<br>
  * FR : Configuration de l'application<br>
  * EN : Application Configuration<br>
  */
+
+use Command\AddCategoriesCommand;
+use Command\AddDefaultSnippetsCommand;
+use Command\GenerateDatabaseCommand;
+use Controller\SnippetController;
+use Mparaiso\CodeGeneration\Controller\CRUD;
+use Mparaiso\Provider\ConsoleServiceProvider;
+use Mparaiso\Provider\CrudServiceProvider;
+use Mparaiso\SimpleRest\Controller\Controller;
+use Mparaiso\SimpleRest\Provider\DBALProvider;
+use Mparaiso\SimpleRest\Service\Service;
+use Service\SnippetService;
+use Silex\Application;
+use Silex\Provider\DoctrineServiceProvider;
+use Silex\Provider\FormServiceProvider;
+use Silex\Provider\MonologServiceProvider;
+use Silex\Provider\SerializerServiceProvider;
+use Silex\Provider\TranslationServiceProvider;
+use Silex\Provider\TwigServiceProvider;
+use Silex\Provider\UrlGeneratorServiceProvider;
+use Silex\Provider\ValidatorServiceProvider;
+use Symfony\Component\EventDispatcher\GenericEvent;
+use Symfony\Component\HttpFoundation\Request;
+
 class Config implements \Silex\ServiceProviderInterface
 {
 
@@ -40,11 +48,6 @@ class Config implements \Silex\ServiceProviderInterface
             )
         ));
 
-        $app["db"] = $app->share($app->extend("db", function ($db, $app) {
-            /*  @var Connection $db */
-            return $db;
-        }));
-
         $app->register(new SerializerServiceProvider());
         $app->register(new ConsoleServiceProvider());
         $app->register(new MonologServiceProvider(), array(
@@ -58,9 +61,26 @@ class Config implements \Silex\ServiceProviderInterface
             return $console;
         }));
 
+        $app->register(new TwigServiceProvider, array(
+            'twig.path'    => __DIR__ . "/Resources/views",
+            "twig.options" => array(
+                "cache" => __DIR__ . "/../temp/twig"
+            )
+        ));
+
+        $app->register(new FormServiceProvider);
+
+        $app->register(new ValidatorServiceProvider);
+
+        $app->register(new TranslationServiceProvider);
+
+        $app->register(new CrudServiceProvider);
+
+        $app->register(new UrlGeneratorServiceProvider);
+
         $app['snippet_provider'] = $app->share(function ($app) {
             return new DBALProvider($app["db"], array(
-                "model" => '\Model\Snippet',
+                "model" => $app["snippet_model"],
                 "name"  => "snippet",
                 "id"    => "id"
             ));
@@ -71,18 +91,31 @@ class Config implements \Silex\ServiceProviderInterface
         });
 
         $app["snippet_controller"] = $app->share(function ($app) {
-            $controller = new Controller(array(
+            $controller = new SnippetController(array(
                 "resource"          => "snippet",
                 "resourcePluralize" => "snippets",
-                "model"             => '\Model\Snippet',
+                "model"             => $app["snippet_model"],
                 "service"           => $app["snippet_service"]
             ));
             return $controller;
         });
 
+        $app["snippet_crud_controller"] = $app->share(function ($app) {
+            return new CRUD(
+                array(
+                    "resourceName" => "snippet",
+                    "service"      => $app["snippet_service"],
+                    "entityClass"  => $app["snippet_model"],
+                    "formClass"    => $app["snippet_form"],
+                    "propertyList" => array("title", "description"),
+                    "properties"   => array("title", "description", "content"),
+                    "templateLayout" => "crud_layout.html.twig"
+                ));
+        });
+
         $app['category_provider'] = $app->share(function ($app) {
             return new DBALProvider($app["db"], array(
-                "model" => '\Model\Category',
+                "model" => $app["category_model"],
                 "name"  => "category",
                 "id"    => "id"
             ));
@@ -96,12 +129,28 @@ class Config implements \Silex\ServiceProviderInterface
             $controller = new Controller(array(
                 "resource"          => "category",
                 "resourcePluralize" => "categories",
-                "model"             => '\Model\Category',
+                "model"             => $app["category_model"],
                 "service"           => $app["category_service"]
             ));
             return $controller;
         });
 
+        $app["category_crud_controller"] = $app->share(function ($app) {
+            return new CRUD(
+                array(
+                    "resourceName" => "category",
+                    "service"      => $app["category_service"],
+                    "entityClass"  => $app["category_model"],
+                    "formClass"    => $app["category_form"],
+                    "templateLayout" => "crud_layout.html.twig"
+                ));
+        });
+
+        $app["snippet_model"] = '\Model\Snippet';
+        $app["snippet_form"] = '\Form\Snippet';
+
+        $app["category_model"] = '\Model\Category';
+        $app["category_form"] = '\Form\Category';
 
         $app["snippet_before_create"] = $app->protect(function (GenericEvent $event) {
             $model = $event->getSubject();
@@ -118,6 +167,7 @@ class Config implements \Silex\ServiceProviderInterface
             $model->setUpdatedAt($date);
         });
 
+
     }
 
     /**
@@ -126,11 +176,14 @@ class Config implements \Silex\ServiceProviderInterface
     public function boot(Application $app)
     {
         $app->get("/", function () {
-            $content = file_get_contents( __DIR__ . '/../web/static/js/snippetd/partials/index.html');
+            $content = file_get_contents(__DIR__ . '/../web/static/js/snippetd/partials/index.html');
             return $content;
         });
         $app->mount("/api/", $app["snippet_controller"]);
         $app->mount("/api/", $app["category_controller"]);
+
+        $app->mount("/admin/", $app["snippet_crud_controller"]);
+        $app->mount("/admin/", $app["category_crud_controller"]);
 
         $app->on("snippet_before_create", $app["snippet_before_create"]);
         $app->on("snippet_before_update", $app["snippet_before_update"]);

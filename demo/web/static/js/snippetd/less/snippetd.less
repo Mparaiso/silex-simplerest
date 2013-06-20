@@ -142,11 +142,11 @@ input {
     border: 1px solid darken(#7B7B7B, 10%);
     &.search-menu {
       .transition(all,0.3s,ease);
-      /// @see http://www.alsacreations.com/tuto/lire/876-transitions-css3-transition-timing-function.html
+      // @see http://www.alsacreations.com/tuto/lire/876-transitions-css3-transition-timing-function.html
       width: 50%;
     }
   }
-  &[type=button] {
+  &[type=button], &[type=submit] {
     color: @light;
     cursor: pointer;
     border: 1px solid darken(#7B7B7B, 10%);
@@ -304,6 +304,7 @@ select:before {
   .transition;
   .snippet-header {
     .padding-5;
+    cursor: pointer;
   }
   padding: 0;
   border-top: 1px solid @light;
@@ -312,7 +313,7 @@ select:before {
   color: @black;
   .snippet-name {
     font-weight: bold;
-    .selection-enabled;
+    ///.selection-enabled;
     text-shadow: 1px 1px @white;
   }
   &:hover {
@@ -375,8 +376,8 @@ select:before {
 
 .footer {
   .padding-5;
-  padding-right:0;
-  padding-left:0;
+  padding-right: 0;
+  padding-left: 0;
   max-width: 960px;
   background: @footer_gradient;
   border-top: 1px solid @black;

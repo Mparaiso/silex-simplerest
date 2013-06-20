@@ -3,11 +3,14 @@
 
 var app = angular.module("snippetd");
 
-function MainCtrl($scope, SnippetService, CategoryService, Options, $filter, Notification) {
-    ///Notification.notify();
+function MainCtrl($scope, SnippetService, CategoryService, Options, $filter, Notification,$location) {
     $scope.version = angular.version.full;
     $scope.options = Options;
-    $scope.search = {};
+    $scope.find = function(keyword){
+        SnippetService.search(keyword,function(results){
+            $location.path("/app/snippets");
+        });
+    };
     $scope.resetFilter = function () {
         Options.search.category = null;
     };

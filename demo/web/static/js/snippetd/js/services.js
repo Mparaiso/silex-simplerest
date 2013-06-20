@@ -144,7 +144,24 @@ app.factory('SnippetService', function (UtilService, ModelService, Options, $htt
             NEXT: "next"
         },
         total: null,
-        search: null,
+        /**
+         * search a word
+         * @param {string} keyword
+         * @param {function} callback
+         */
+        _keyword: null,
+        search: function (keyword, callback, callbackArgs) {
+            var that = this;
+            callbackArgs = callbackArgs || [];
+            $http.get("/api/snippet/search/" + encodeURI(keyword)
+                , {params: {limit: Options.params.snippetPerPage}}
+            ).success(function (result) {
+                    that.snippets = result.snippets;
+                    that.total = that.snippets.length;
+                    that.setOffset(0);
+                    return callback.apply(this, [].slice.call(callbackArgs));
+                });
+        },
         getTotal: function (callback, callbackArgs) {
             $http({method: "GET", url: "/api/snippet/count"}).success(function (data) {
                 SnippetService.total = data.count;
@@ -154,13 +171,14 @@ app.factory('SnippetService', function (UtilService, ModelService, Options, $htt
                 }
             });
         },
-        isFirstPage:function(){
-            return this._offset==0;
+        isFirstPage: function () {
+            return this._offset == 0;
         },
-        hasPrevious:function(){
-            return this._offset>0;
+        hasPrevious: function () {
+            return this._offset > 0;
         },
-        hasNext:function(){
+        hasNext: function () {
+            return this._offset * Options.params.snippetPerPage < this.getTotal();
         },
         getSnippets: function (page) {
             if (page) {

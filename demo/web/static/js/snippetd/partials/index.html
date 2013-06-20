@@ -40,8 +40,12 @@
         <!-- MAIN MENU -->
         <div id="menu" class="menu" ng-controller="MainMenuCtrl">
             <div class="block search-menu left">
-                <input type="button" value="Search"/>
-                <input id="search" type="text" ng-model="search.$" class="search-menu"/>
+                <form name="search">
+                    <input type="submit" value="search" ng-click="find(keyword)"
+                           ng-disabled="search.$invalid">
+                    <input name="keyword" id="search-keyword"
+                           required type="text" ng-model="keyword" class="search-menu"/>
+                </form>
             </div>
             <div class="button-bar block right">
                 <button><a href="#/app/snippets">All</a></button>
@@ -110,7 +114,7 @@
     </div>
     <div class="snippet-list" ng-show="snippetService.snippets.length > 0"
          ng-init="selectedSnippet=null">
-        <div class="snippet-item" ng-repeat="snippet in snippetService.snippets|filter:search" ng-animate="'si'">
+        <div class="snippet-item" ng-repeat="snippet in snippetService.snippets" ng-animate="'si'">
             <span ng-include="'snippet-item.html'"></span>
         </div>
         <div class="spacer-25">&nbsp;</div>
@@ -130,7 +134,8 @@
     <span ng-controller="SnippetItemCtrl">
     <div class="snippet-header"
          ng-click="snippetService.selectedSnippet=snippetService.selectedSnippet==snippet?null:snippet">
-        <input type="button" disabled value="SD"/>
+        <input type="button" disabled
+               value="{{$index+1+(snippetService.getOffset()*options.params.snippetPerPage)}}"/>
 
         <div class='inline-block snippet-name'>{{snippet.title}}</div>
         <div class='inline-block snippet-category right'>

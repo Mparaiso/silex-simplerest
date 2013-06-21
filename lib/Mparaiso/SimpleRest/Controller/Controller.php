@@ -64,6 +64,12 @@ class Controller implements ControllerProviderInterface
     protected $afterUpdate;
     protected $beforeIndex;
     protected $afterIndex;
+    /**
+     * show detail messages
+     * @var string
+     */
+    protected $debug;
+    protected $defaultErrorMessage = "Error";
 
     /**
      * FR : constructeur<br>
@@ -146,16 +152,26 @@ class Controller implements ControllerProviderInterface
         try {
             $limit = $req->query->get("limit");
             $offset = $req->query->get("offset");
-            $criteria = array();
+            $criteria = array(); // where
             foreach ($this->criteria as $value) {
                 if ($req->query->get($value) != NULL) {
                     $criteria[$value] = $req->query->get($value);
                 }
             }
+            $order = array(); //order by
+            if ($req->query->has("order_by") && $req->query->has("order_order")) {
+                $order_by = $req->query->get("order_by");
+                $order_order = $req->query->get("order_order", "ASC");
+                $choices = array("ASC", "DESC");
+                if (in_array($order_order, $choices) && in_array($order_by, $this->criteria)) {
+                    $order[$order_by] = $order_order;
+                }
+            }
+
             $app["dispatcher"]->dispatch(
                 $this->beforeIndex, new GenericEvent($criteria, array("request" => $req, "app" => $app)));
             $collection = $this->service->{$this->findByMethod}(
-                $criteria, array(), $limit, $limit * $offset);
+                $criteria, $order, $limit, $limit * $offset);
             $app["dispatcher"]->dispatch(
                 $this->afterIndex, new GenericEvent($collection, array("request" => $req, "app" => $app)));
             $response = $this->makeResponse($app,
@@ -163,8 +179,9 @@ class Controller implements ControllerProviderInterface
                       "message"                  => count($collection) . " $this->resourcePluralize found",
                       "$this->resourcePluralize" => $collection));
         } catch (Exception $e) {
+            $message = $this->makeErrorMessage($e);
             $response = $this->makeResponse(
-                $app, array("status" => "error", "message" => $e->getMessage()), 500);
+                $app, array("status" => self::OTHER_ERROR, "message" => $message), self::OTHER_ERROR);
         }
         return $response;
     }
@@ -193,14 +210,15 @@ class Controller implements ControllerProviderInterface
             $response = $this->makeResponse($app,
                 array("status" => "ok", "$this->resource" => $model));
         } catch (HttpException $e) {
+            $message = $this->makeErrorMessage($e);
             $response = $this->makeResponse($app,
-                array("status"  => "error",
-                      "code"    => $e->getStatusCode(),
-                      "message" => $e->getMessage()), 404);
+                array("status"  => self::NOT_FOUND,
+                      "message" => $message), self::NOT_FOUND);
         } catch (Exception $e) {
+            $message = $this->makeErrorMessage($e);
             $response = $this->makeResponse($app,
-                array("status"  => "error",
-                      "message" => $e->getMessage()), 500);
+                array("status"  => self::OTHER_ERROR,
+                      "message" => $message), self::OTHER_ERROR);
         }
         return $response;
 
@@ -228,10 +246,11 @@ class Controller implements ControllerProviderInterface
                 $this->afterCreate, new GenericEvent($model, array("request" => $req, "app" => $app, "id" => $id)));
             $response = $app->json(array(
                 "status"  => self::RESOURCE_CREATED,
-                "message" => "$this->resource with $this->is $id created with.",
+                "message" => "$this->resource with $this->id $id created with.",
                 "id"      => $id));
         } catch (Exception $e) {
-            $response = $app->json(array("status" => "error", "message" => $e->getMessage()), self::OTHER_ERROR);
+            $message = $this->makeErrorMessage($e);
+            $response = $app->json(array("status" => self::OTHER_ERROR, "message" => $message), self::OTHER_ERROR);
         }
         return $response;
     }
@@ -266,8 +285,9 @@ class Controller implements ControllerProviderInterface
                 throw new Exception("resource $this->resource not found");
             }
         } catch (Exception $e) {
+            $message = $this->makeErrorMessage($e);
             $response = $this->makeResponse($app,
-                array("status" => "error", "message" => $e->getMessage()), 500);
+                array("status" => self::OTHER_ERROR, "message" => $message), self::OTHER_ERROR);
         }
         return $response;
     }
@@ -300,8 +320,9 @@ class Controller implements ControllerProviderInterface
                     array("status" => self::NOT_FOUND,), self::NOT_FOUND);
             }
         } catch (Exception $e) {
+            $message = $this->makeErrorMessage($e);
             $response = $this->makeResponse($app,
-                array("status" => "error", "message" => $e->getMessage()), self::OTHER_ERROR);
+                array("status" => self::OTHER_ERROR, "message" => $message), self::OTHER_ERROR);
         }
         return $response;
     }
@@ -319,14 +340,9 @@ class Controller implements ControllerProviderInterface
 
             $response = $this->makeResponse($app, array("status" => self::SUCCESS, "count" => $count));
         } catch (Exception $e) {
-            if ($app["debug"] == TRUE) {
-                $message = $e->getMessage();
-            } else {
-                $message = "error";
-            }
-
+            $message = $this->makeErrorMessage($e);
             $response = $this->makeResponse($app,
-                array("status" => self::SUCCESS, "message" => $message), self::OTHER_ERROR);
+                array("status" => self::OTHER_ERROR, "message" => $message), self::OTHER_ERROR);
 
         }
         return $response;
@@ -361,9 +377,11 @@ class Controller implements ControllerProviderInterface
         return $controllers;
     }
 
-    public function addCustomRoutes(ControllerCollection $controllers){
+    public function addCustomRoutes(ControllerCollection $controllers)
+    {
 
     }
+
     /**
      * FR : selon le format demandé , renvoyer du XML ou du JSON<br>
      * EN : given a format request , return a xml or a json response
@@ -391,4 +409,13 @@ class Controller implements ControllerProviderInterface
     }
 
 
+    function makeErrorMessage(Exception $e)
+    {
+        if ($this->debug) {
+            $message = $e->getMessage();
+        } else {
+            $message = $this->defaultErrorMessage;
+        }
+        return $message;
+    }
 }

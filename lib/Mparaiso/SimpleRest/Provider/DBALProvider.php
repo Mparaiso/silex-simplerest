@@ -45,6 +45,7 @@ class DBALProvider implements IProvider
     function findBy(array $criteria = array(), array $order = array(), $limit = NULL, $offset = NULL)
     {
         $qb = $this->connection->createQueryBuilder();
+//        $fields = $this->connection->getSchemaManager()->listTableColumns($this->name);
         $qb->select("*")->from($this->name, "t");
         foreach ($criteria as $key => $value) {
             $qb->andWhere("$key = :$key");

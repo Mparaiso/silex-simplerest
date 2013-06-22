@@ -40,11 +40,12 @@ class Config implements \Silex\ServiceProviderInterface
     {
         $app->register(new DoctrineServiceProvider(), array(
             "db.options" => array(
-                "driver"   => "pdo_mysql",
-                "host"     => "localhost",
-                "dbname"   => getenv("SIMPE_REST_DB"),
+                "driver"   => getenv("SIMPE_REST_DRIVER"),
+                "host"     => getenv("SIMPE_REST_HOST"),
+                "dbname"   => getenv("SIMPE_REST_DBNAME"),
                 "user"     => getenv("SIMPLE_REST_USER"),
-                "password" => getenv("SIMPLE_REST_PASSWORD")
+                "password" => getenv("SIMPLE_REST_PASSWORD"),
+                "port"     => getenv("SIMPLE_REST_PORT")
             )
         ));
 
@@ -103,12 +104,12 @@ class Config implements \Silex\ServiceProviderInterface
         $app["snippet_crud_controller"] = $app->share(function ($app) {
             return new CRUD(
                 array(
-                    "resourceName" => "snippet",
-                    "service"      => $app["snippet_service"],
-                    "entityClass"  => $app["snippet_model"],
-                    "formClass"    => $app["snippet_form"],
-                    "propertyList" => array("title", "description"),
-                    "properties"   => array("title", "description", "content"),
+                    "resourceName"   => "snippet",
+                    "service"        => $app["snippet_service"],
+                    "entityClass"    => $app["snippet_model"],
+                    "formClass"      => $app["snippet_form"],
+                    "propertyList"   => array("title", "description"),
+                    "properties"     => array("title", "description", "content"),
                     "templateLayout" => "crud_layout.html.twig"
                 ));
         });
@@ -138,10 +139,10 @@ class Config implements \Silex\ServiceProviderInterface
         $app["category_crud_controller"] = $app->share(function ($app) {
             return new CRUD(
                 array(
-                    "resourceName" => "category",
-                    "service"      => $app["category_service"],
-                    "entityClass"  => $app["category_model"],
-                    "formClass"    => $app["category_form"],
+                    "resourceName"   => "category",
+                    "service"        => $app["category_service"],
+                    "entityClass"    => $app["category_model"],
+                    "formClass"      => $app["category_form"],
                     "templateLayout" => "crud_layout.html.twig"
                 ));
         });

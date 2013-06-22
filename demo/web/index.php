@@ -14,6 +14,7 @@ $autoload = require __DIR__ . "/../vendor/autoload.php";
 $autoload->add("", __DIR__ . "/../app");
 $autoload->add("", __DIR__ . "/../../lib");
 
-$app = new App(array("debug" => TRUE));
+$debug = getenv("SIMPE_REST_ENV") == "development" ? TRUE : FALSE;
+$app = new App(array("debug" => $debug));
 
 $app->run();

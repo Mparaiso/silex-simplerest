@@ -59,7 +59,7 @@ function SnippetEditCtrl($scope, $routeParams, $location, $log, SnippetService, 
     }
     $scope.save = function (snippet) {
         SnippetService.save(snippet);
-        $location.path('/#/snippets/');
+        $location.path('/app/snippets');
     };
 }
 

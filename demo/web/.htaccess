@@ -1,2 +1,2 @@
-ResourceFallback index.php
+FallbackResource index.php
 

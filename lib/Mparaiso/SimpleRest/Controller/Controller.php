@@ -132,7 +132,7 @@ class Controller implements ControllerProviderInterface
      * @param $arguments
      * @return mixed
      */
-    function __call($name, $arguments)
+    function __get($name)
     {
         $property = lcfirst(substr($name, 3));
         if (property_exists($this, $property)) {
@@ -150,8 +150,8 @@ class Controller implements ControllerProviderInterface
     function index(Request $req, Application $app)
     {
         try {
-            $limit = $req->query->get("limit");
-            $offset = $req->query->get("offset");
+            $limit = $req->query->get("limit",1000);
+            $offset = $req->query->get("offset",0);
             $criteria = array(); // where
             foreach ($this->criteria as $value) {
                 if ($req->query->get($value) != NULL) {

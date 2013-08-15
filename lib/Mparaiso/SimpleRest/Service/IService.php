@@ -4,6 +4,7 @@ namespace Mparaiso\SimpleRest\Service;
 
 
 use Mparaiso\SimpleRest\Model\AbstractModel;
+use Mparaiso\SimpleRest\Model\IModel;
 
 interface IService
 {
@@ -13,11 +14,11 @@ interface IService
 
     function findOneBy(array $where,array $order);
 
-    function remove(AbstractModel $model);
+    function remove(IModel $model);
 
-    function create(AbstractModel $model);
+    function create(IModel $model);
 
-    function update( $model, array $where);
+    function update(IModel $model, array $where);
 
     function count(array $where);
 }

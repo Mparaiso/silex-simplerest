@@ -4,7 +4,7 @@ namespace Mparaiso\SimpleRest\Model;
  * Class IModel
  * @package Model
  */
-abstract class AbstractModel implements \JsonSerializable
+abstract class AbstractModel implements IModel
 {
     function __construct(array $values = array())
     {

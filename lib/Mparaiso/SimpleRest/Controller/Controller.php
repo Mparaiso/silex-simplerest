@@ -48,7 +48,7 @@ class Controller implements ControllerProviderInterface
     protected $deleteVerb = "delete";
     protected $allow = array("create", "update", "read", "index", "delete", "count");
     protected $defaultFormat = "json";
-    protected $formats = "json|xml";
+    protected $formats = array("json", "xml");
     protected $resource;
     protected $resourcePluralize;
     protected $service;
@@ -150,8 +150,8 @@ class Controller implements ControllerProviderInterface
     function index(Request $req, Application $app)
     {
         try {
-            $limit = $req->query->get("limit",1000);
-            $offset = $req->query->get("offset",0);
+            $limit = $req->query->get("limit", 1000);
+            $offset = $req->query->get("offset", 0);
             $criteria = array(); // where
             foreach ($this->criteria as $value) {
                 if ($req->query->get($value) != NULL) {
@@ -175,9 +175,9 @@ class Controller implements ControllerProviderInterface
             $app["dispatcher"]->dispatch(
                 $this->afterIndex, new GenericEvent($collection, array("request" => $req, "app" => $app)));
             $response = $this->makeResponse($app,
-                array("status"                   => self::SUCCESS,
-                      "message"                  => count($collection) . " $this->resourcePluralize found",
-                      "$this->resourcePluralize" => $collection));
+                array("status" => self::SUCCESS,
+                    "message" => count($collection) . " $this->resourcePluralize found",
+                    "$this->resourcePluralize" => $collection));
         } catch (Exception $e) {
             $message = $this->makeErrorMessage($e);
             $response = $this->makeResponse(
@@ -212,13 +212,13 @@ class Controller implements ControllerProviderInterface
         } catch (HttpException $e) {
             $message = $this->makeErrorMessage($e);
             $response = $this->makeResponse($app,
-                array("status"  => self::NOT_FOUND,
-                      "message" => $message), self::NOT_FOUND);
+                array("status" => self::NOT_FOUND,
+                    "message" => $message), self::NOT_FOUND);
         } catch (Exception $e) {
             $message = $this->makeErrorMessage($e);
             $response = $this->makeResponse($app,
-                array("status"  => self::OTHER_ERROR,
-                      "message" => $message), self::OTHER_ERROR);
+                array("status" => self::OTHER_ERROR,
+                    "message" => $message), self::OTHER_ERROR);
         }
         return $response;
 
@@ -231,10 +231,10 @@ class Controller implements ControllerProviderInterface
      * @param Application $app
      * @return \Symfony\Component\HttpFoundation\JsonResponse
      */
-    function create(Request $req, Application $app)
+    function create(Request $req, Application $app, $_format)
     {
         try {
-            $data = json_decode($req->getContent(), TRUE);
+            $data = $app["serializer"]->unserialize($req->getContent(), $_format);
             if (isset($data[$this->id])) {
                 unset($data[$this->id]);
             }
@@ -245,9 +245,9 @@ class Controller implements ControllerProviderInterface
             $app["dispatcher"]->dispatch(
                 $this->afterCreate, new GenericEvent($model, array("request" => $req, "app" => $app, "id" => $id)));
             $response = $app->json(array(
-                "status"  => self::RESOURCE_CREATED,
+                "status" => self::RESOURCE_CREATED,
                 "message" => "$this->resource with $this->id $id created with.",
-                "id"      => $id));
+                "id" => $id));
         } catch (Exception $e) {
             $message = $this->makeErrorMessage($e);
             $response = $app->json(array("status" => self::OTHER_ERROR, "message" => $message), self::OTHER_ERROR);
@@ -263,12 +263,12 @@ class Controller implements ControllerProviderInterface
      * @param $id
      * @return \Symfony\Component\HttpFoundation\JsonResponse
      */
-    function update(Request $req, Application $app, $id)
+    function update(Request $req, Application $app, $id, $_format)
     {
         try {
             $exists = $this->service->{$this->findMethod}($id);
             if ($exists) {
-                $data = json_decode($req->getContent(), TRUE);
+                $data = $app["serializer"]->unserialize($req->getContent(), $_format);
                 $data[$this->id] = $id;
                 $changes = new $this->model($data);
                 $app["dispatcher"]->dispatch(
@@ -278,8 +278,8 @@ class Controller implements ControllerProviderInterface
                     $this->beforeUpdate, new GenericEvent($changes, array("$this->id" => $id, "app" => $app)));
                 $response = $this->makeResponse($app,
                     array(
-                        "status"       => self::SUCCESS,
-                        "message"      => "$this->resource with $this->id $id updated.",
+                        "status" => self::SUCCESS,
+                        "message" => "$this->resource with $this->id $id updated.",
                         "rowsAffected" => $rowsAffected));
             } else {
                 throw new Exception("resource $this->resource not found");
@@ -312,9 +312,9 @@ class Controller implements ControllerProviderInterface
                     $this->afterDelete, new GenericEvent($model, array("app" => $app, "request" => $req)));
 
                 $response = $this->makeResponse($app,
-                    array("status"       => self::SUCCESS,
-                          "message"      => "$rowsAffected $this->resourcePluralize deleted.",
-                          "rowsAffected" => $rowsAffected), self::SUCCESS);
+                    array("status" => self::SUCCESS,
+                        "message" => "$rowsAffected $this->resourcePluralize deleted.",
+                        "rowsAffected" => $rowsAffected), self::SUCCESS);
             } else {
                 $response = $this->makeResponse($app,
                     array("status" => self::NOT_FOUND,), self::NOT_FOUND);
@@ -373,7 +373,7 @@ class Controller implements ControllerProviderInterface
         if (in_array("read", $this->allow))
             $controllers->match("/$this->resource/{id}.{_format}", array($this, "read"))
                 ->method($this->readVerb);
-        $controllers->value("_format", $this->defaultFormat)->assert("_format", $this->formats);
+        $controllers->value("_format", $this->defaultFormat)->assert("_format", implode("|", $this->formats));
         return $controllers;
     }
 

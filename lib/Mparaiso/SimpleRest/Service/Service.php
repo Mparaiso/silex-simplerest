@@ -3,7 +3,7 @@
 
 namespace Mparaiso\SimpleRest\Service;
 
-use Mparaiso\SimpleRest\Model\AbstractModel;
+use Mparaiso\SimpleRest\Model\IModel;
 use Mparaiso\SimpleRest\Provider\IProvider;
 use Mparaiso\SimpleRest\Service\IService;
 
@@ -37,17 +37,17 @@ class Service implements IService
         }
     }
 
-    function remove(AbstractModel $model)
+    function remove(IModel $model)
     {
         return $this->provider->remove($model);
     }
 
-    function create(AbstractModel $model)
+    function create(IModel $model)
     {
         return $this->provider->create($model);
     }
 
-    function update($model, array $where)
+    function update(IModel $model, array $where)
     {
         return $this->provider->update($model, $where);
     }

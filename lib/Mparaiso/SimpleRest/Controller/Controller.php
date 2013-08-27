@@ -234,7 +234,7 @@ class Controller implements ControllerProviderInterface
     function create(Request $req, Application $app, $_format)
     {
         try {
-            $data = $app["serializer"]->unserialize($req->getContent(), $_format);
+            $data = $app["serializer"]->deserialize($req->getContent(), $_format);
             if (isset($data[$this->id])) {
                 unset($data[$this->id]);
             }

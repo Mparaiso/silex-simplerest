@@ -34,36 +34,43 @@ class Controller implements ControllerProviderInterface
     const OTHER_ERROR = 500;
 
     public $findByMethod = "findBy";
-    protected $findAllMethod = "findAll";
-    protected $findMethod = "find";
-    protected $createMethod = "create";
-    protected $updateMethod = "update";
-    protected $deleteMethod = "remove";
-    protected $countMethod = "count";
-    protected $id = "id";
-    protected $indexVerb = "get";
-    protected $readVerb = "get";
-    protected $createVerb = "post";
-    protected $updateVerb = "post";
-    protected $deleteVerb = "delete";
-    protected $allow = array("create", "update", "read", "index", "delete", "count");
-    protected $defaultFormat = "json";
-    protected $formats = array("json", "xml");
-    protected $resource;
-    protected $resourcePluralize;
-    protected $service;
-    protected $model;
-    protected $criteria;
-    protected $beforeDelete;
-    protected $afterDelete;
-    protected $beforeRead;
-    protected $afterRead;
-    protected $beforeCreate;
-    protected $afterCreate;
-    protected $beforeUpdate;
-    protected $afterUpdate;
-    protected $beforeIndex;
-    protected $afterIndex;
+    public $findAllMethod = "findAll";
+    public $findMethod = "find";
+    public $createMethod = "create";
+    public $updateMethod = "update";
+    public $deleteMethod = "remove";
+    public $countMethod = "count";
+    public $id = "id";
+    public $indexVerb = "get";
+    public $readVerb = "get";
+    public $createVerb = "post";
+    public $updateVerb = "post";
+    public $deleteVerb = "delete";
+    public $allow = array("create", "update", "read", "index", "delete", "count");
+    public $defaultFormat = "json";
+    public $formats = array("json", "xml");
+    public $resource;
+    public $resourcePluralize;
+    public $service;
+    public $model;
+    public $criteria;
+    public $beforeDelete;
+    public $afterDelete;
+    public $beforeRead;
+    public $afterRead;
+    public $beforeCreate;
+    public $afterCreate;
+    public $beforeUpdate;
+    public $afterUpdate;
+    public $beforeIndex;
+    public $afterIndex;
+    public $createRoute;
+    public $indexRoute;
+    public $readRoute;
+    public $updateRoute;
+    public $deleteRoute;
+    public $countRoute;
+
     /**
      * show detail messages
      * @var string
@@ -124,6 +131,19 @@ class Controller implements ControllerProviderInterface
         if ($this->resource && $this->resourcePluralize == NULL) {
             $this->resourcePluralize = $this->resource . "s";
         }
+        // create route names if not specified in parameters
+        if (NULL == $this->createRoute)
+            $this->createRoute = "mp_simplerest_" . $this->resource . "_create";
+        if (NULL == $this->readRoute)
+            $this->readRoute = "mp_simplerest_" . $this->resource . "_read";
+        if (NULL == $this->deleteRoute)
+            $this->deleteRoute = "mp_simplerest_" . $this->resource . "_delete";
+        if (NULL == $this->updateRoute)
+            $this->updateRoute = "mp_simplerest_" . $this->resource . "_update";
+        if (NULL == $this->indexRoute)
+            $this->indexRoute = "mp_simplerest_" . $this->resource . "_index";
+        if (NULL == $this->countRoute)
+            $this->countRoute = "mp_simplerest_" . $this->resource . "_count";
     }
 
     /**
@@ -172,6 +192,9 @@ class Controller implements ControllerProviderInterface
                 $this->beforeIndex, new GenericEvent($criteria, array("request" => $req, "app" => $app)));
             $collection = $this->service->{$this->findByMethod}(
                 $criteria, $order, $limit, $limit * $offset);
+            if ($collection instanceof \Traversable) {
+                $collection = iterator_to_array($collection,false);
+            }
             $app["dispatcher"]->dispatch(
                 $this->afterIndex, new GenericEvent($collection, array("request" => $req, "app" => $app)));
             $response = $this->makeResponse($app,
@@ -362,20 +385,27 @@ class Controller implements ControllerProviderInterface
         $this->addCustomRoutes($controllers);
         if (in_array("create", $this->allow))
             $controllers->match("/$this->resource.{_format}", array($this, "create"))
-                ->method($this->createVerb);
+                ->method($this->createVerb)
+                ->bind($this->createRoute);
         if (in_array("count", $this->allow))
-            $controllers->match("/$this->resource/count.{_format}", array($this, "count"));
+            $controllers->match("/$this->resource/count.{_format}", array($this, "count"))
+                ->method($this->countMethod)
+                ->bind($this->countRoute);
         if (in_array("update", $this->allow))
             $controllers->match("/$this->resource/{id}.{_format}", array($this, "update"))
-                ->method($this->updateVerb);
+                ->method($this->updateVerb)
+                ->bind($this->udpateRoute);
         if (in_array("delete", $this->allow))
             $controllers->match("/$this->resource/{id}.{_format}", array($this, "delete"))
+                ->bind($this->deleteRoute)
                 ->method($this->deleteVerb);
         if (in_array("index", $this->allow))
             $controllers->match("/$this->resource.{_format}", array($this, "index"))
+                ->bind($this->indexRoute)
                 ->method($this->indexVerb);
         if (in_array("read", $this->allow))
             $controllers->match("/$this->resource/{id}.{_format}", array($this, "read"))
+                ->bind($this->readRoute)
                 ->method($this->readVerb);
         $controllers->value("_format", $this->defaultFormat)->assert("_format", implode("|", $this->formats));
         return $controllers;

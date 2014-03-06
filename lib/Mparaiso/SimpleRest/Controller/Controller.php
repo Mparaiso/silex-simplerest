@@ -44,7 +44,7 @@ class Controller implements ControllerProviderInterface
     public $indexVerb = "get";
     public $readVerb = "get";
     public $createVerb = "post";
-    public $updateVerb = "post";
+    public $updateVerb = "put";
     public $deleteVerb = "delete";
     public $allow = array("create", "update", "read", "index", "delete", "count");
     public $defaultFormat = "json";
@@ -70,6 +70,7 @@ class Controller implements ControllerProviderInterface
     public $updateRoute;
     public $deleteRoute;
     public $countRoute;
+    public $logger;
 
     /**
      * show detail messages
@@ -193,7 +194,7 @@ class Controller implements ControllerProviderInterface
             $collection = $this->service->{$this->findByMethod}(
                 $criteria, $order, $limit, $limit * $offset);
             if ($collection instanceof \Traversable) {
-                $collection = iterator_to_array($collection,false);
+                $collection = iterator_to_array($collection, false);
             }
             $app["dispatcher"]->dispatch(
                 $this->afterIndex, new GenericEvent($collection, array("request" => $req, "app" => $app)));
@@ -249,7 +250,7 @@ class Controller implements ControllerProviderInterface
 
     /**
      * FR : crée une resource
-     * EN : crée une resource
+     * EN : create a resource
      * @param Request $req
      * @param Application $app
      * @return \Symfony\Component\HttpFoundation\JsonResponse
@@ -268,13 +269,13 @@ class Controller implements ControllerProviderInterface
             }
             $app["dispatcher"]->dispatch(
                 $this->beforeCreate, new GenericEvent($model, array("request" => $req, "app" => $app)));
-            $id = $this->service->{$this->createMethod}($model);
+            $model = $this->service->{$this->createMethod}($model);
             $app["dispatcher"]->dispatch(
                 $this->afterCreate, new GenericEvent($model, array("request" => $req, "app" => $app, "id" => $id)));
             $response = $app->json(array(
                 "status" => self::RESOURCE_CREATED,
-                "message" => "$this->resource with $this->id $id created with.",
-                "id" => $id));
+                "message" => "$this->resource created.",
+                "result" => $model));
         } catch (Exception $e) {
             $message = $this->makeErrorMessage($e);
             $response = $app->json(array("status" => self::OTHER_ERROR, "message" => $message), self::OTHER_ERROR);
@@ -295,19 +296,17 @@ class Controller implements ControllerProviderInterface
         try {
             $exists = $this->service->{$this->findMethod}($id);
             if ($exists) {
-                $data = $app["serializer"]->unserialize($req->getContent(), $_format);
-                $data[$this->id] = $id;
-                $changes = new $this->model($data);
+                $changes = $app["serializer"]->deserialize($req->getContent(), $this->model, $_format);
                 $app["dispatcher"]->dispatch(
                     $this->beforeUpdate, new GenericEvent($changes, array("$this->id" => $id, "app" => $app)));
-                $rowsAffected = $this->service->{$this->updateMethod}($changes, array("$this->id" => $id));
+                $result = $this->service->{$this->updateMethod}($changes, array("$this->id" => $id));
                 $app["dispatcher"]->dispatch(
                     $this->beforeUpdate, new GenericEvent($changes, array("$this->id" => $id, "app" => $app)));
                 $response = $this->makeResponse($app,
                     array(
                         "status" => self::SUCCESS,
                         "message" => "$this->resource with $this->id $id updated.",
-                        "rowsAffected" => $rowsAffected));
+                        "result" => $result));
             } else {
                 throw new Exception("resource $this->resource not found");
             }
@@ -436,7 +435,9 @@ class Controller implements ControllerProviderInterface
                 array_merge($headers, array("Content-Type" => $app['request']->getMimeType($_format)));
                 $response = new Response($app['serializer']->serialize($data, $_format), $status, $headers);
                 break;
+            //try json
             default:
+                //array_merge($headers, array("Content-Type" => $app['request']->getMimeType("json")));
                 $response = $app->json($data, $status, $headers);
         }
         return $response;
@@ -445,6 +446,9 @@ class Controller implements ControllerProviderInterface
 
     function makeErrorMessage(Exception $e)
     {
+        if ($this->logger) {
+            $this->logger->err($e->getMessage());
+        }
         if ($this->debug) {
             $message = $e->getMessage();
         } else {

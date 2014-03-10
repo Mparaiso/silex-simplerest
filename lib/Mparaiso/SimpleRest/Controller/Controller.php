@@ -198,10 +198,7 @@ class Controller implements ControllerProviderInterface
             }
             $app["dispatcher"]->dispatch(
                 $this->afterIndex, new GenericEvent($collection, array("request" => $req, "app" => $app)));
-            $response = $this->makeResponse($app,
-                array("status" => self::SUCCESS,
-                    "message" => count($collection) . " $this->resourcePluralize found",
-                    "$this->resourcePluralize" => $collection));
+            $response = $this->makeResponse($app,$collection);
         } catch (Exception $e) {
             $message = $this->makeErrorMessage($e);
             $response = $this->makeResponse(
@@ -231,8 +228,7 @@ class Controller implements ControllerProviderInterface
             $app["dispatcher"]->dispatch(
                 $this->afterRead, new GenericEvent($model, array("request" => $req, "app" => $app))
             );
-            $response = $this->makeResponse($app,
-                array("status" => "ok", "$this->resource" => $model));
+            $response = $this->makeResponse($app,$model);
         } catch (HttpException $e) {
             $message = $this->makeErrorMessage($e);
             $response = $this->makeResponse($app,
@@ -272,10 +268,7 @@ class Controller implements ControllerProviderInterface
             $model = $this->service->{$this->createMethod}($model);
             $app["dispatcher"]->dispatch(
                 $this->afterCreate, new GenericEvent($model, array("request" => $req, "app" => $app, "id" => $id)));
-            $response = $app->json(array(
-                "status" => self::RESOURCE_CREATED,
-                "message" => "$this->resource created.",
-                "result" => $model));
+            $response = $app->json($model);
         } catch (Exception $e) {
             $message = $this->makeErrorMessage($e);
             $response = $app->json(array("status" => self::OTHER_ERROR, "message" => $message), self::OTHER_ERROR);
@@ -302,11 +295,7 @@ class Controller implements ControllerProviderInterface
                 $result = $this->service->{$this->updateMethod}($changes, array("$this->id" => $id));
                 $app["dispatcher"]->dispatch(
                     $this->beforeUpdate, new GenericEvent($changes, array("$this->id" => $id, "app" => $app)));
-                $response = $this->makeResponse($app,
-                    array(
-                        "status" => self::SUCCESS,
-                        "message" => "$this->resource with $this->id $id updated.",
-                        "result" => $result));
+                $response = $this->makeResponse($app, $result);
             } else {
                 throw new Exception("resource $this->resource not found");
             }
@@ -337,10 +326,7 @@ class Controller implements ControllerProviderInterface
                 $app["dispatcher"]->dispatch(
                     $this->afterDelete, new GenericEvent($model, array("app" => $app, "request" => $req)));
 
-                $response = $this->makeResponse($app,
-                    array("status" => self::SUCCESS,
-                        "message" => "$rowsAffected $this->resourcePluralize deleted.",
-                        "rowsAffected" => $rowsAffected), self::SUCCESS);
+                $response = $this->makeResponse($app,$rowsAffected);
             } else {
                 $response = $this->makeResponse($app,
                     array("status" => self::NOT_FOUND,), self::NOT_FOUND);
@@ -364,7 +350,7 @@ class Controller implements ControllerProviderInterface
             }
             $count = $this->service->{$this->countMethod}($criteria);
 
-            $response = $this->makeResponse($app, array("status" => self::SUCCESS, "count" => $count));
+            $response = $this->makeResponse($app,$count);
         } catch (Exception $e) {
             $message = $this->makeErrorMessage($e);
             $response = $this->makeResponse($app,
@@ -412,7 +398,6 @@ class Controller implements ControllerProviderInterface
 
     public function addCustomRoutes(ControllerCollection $controllers)
     {
-
     }
 
     /**
@@ -429,20 +414,9 @@ class Controller implements ControllerProviderInterface
         $request = $app['request'];
         /* @var Request $request */
         $_format = $request->attributes->get("_format");
-        $response = NULL;
-        switch ($_format) {
-            case "xml":
-                array_merge($headers, array("Content-Type" => $app['request']->getMimeType($_format)));
-                $response = new Response($app['serializer']->serialize($data, $_format), $status, $headers);
-                break;
-            //try json
-            default:
-                //array_merge($headers, array("Content-Type" => $app['request']->getMimeType("json")));
-                $response = $app->json($data, $status, $headers);
-        }
-        return $response;
+        array_merge($headers, array("Content-Type" => $app['request']->getMimeType($_format)));
+        return new Response($app['serializer']->serialize($data, $_format), $status, $headers);
     }
-
 
     function makeErrorMessage(Exception $e)
     {

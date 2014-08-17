@@ -3,7 +3,7 @@
 use Mparaiso\Provider\ConsoleServiceProvider;
 use Silex\Application;
 
-$autoload = require __DIR__ . '/vendor/autoload.php';
+$autoload = require __DIR__ . '/../vendor/autoload.php';
 $autoload->add("", __DIR__.'/../lib');
 $autoload->add("", __DIR__.'/lib');
 

@@ -1,6 +1,8 @@
 SimpleRest Service Provider
 ===========================
 
+[![Build Status](https://travis-ci.org/Mparaiso/silex-simplerest.svg?branch=master)](https://travis-ci.org/Mparaiso/silex-simplerest)
+
 Simple restfull controllers with json and xml serialization
 in Silex !
 

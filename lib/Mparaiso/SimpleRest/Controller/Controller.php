@@ -4,73 +4,98 @@
  */
 namespace Mparaiso\SimpleRest\Controller;
 
-
-use Exception;
+use ArrayObject;
 use Silex\Application;
 use Silex\ControllerCollection;
 use Silex\ControllerProviderInterface;
+use Silex\Route;
+use Symfony\Component\EventDispatcher\EventDispatcher;
 use Symfony\Component\EventDispatcher\GenericEvent;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpKernel\Exception\HttpException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\Serializer\Serializer;
 
 /**
  * Class Controller
  * FR : Controleur générique pour une interface de type REST.
  * @package Mparaiso\SimpleRest\Controller
+ * @property-read $namespace
+ * @property-read $indexVerb
+ * @property-read $readVerb
+ * @property-read $createVerb
+ * @property-read $updateVerb
+ * @property-read $deleteVerb
+ * @property-read $allow
+ * @property-read $defaultFormat
+ * @property-read $formats
+ * @property-read $model
+ * @property-read $resource
+ * @property-read $resourcePluralize
+ * @property-read \Mparaiso\SimpleRest\Service\RestServiceInterface $service
+ * @property-read $beforeDelete
+ * @property-read $afterDelete
+ * @property-read $beforeRead
+ * @property-read $afterRead
+ * @property-read $beforeCreate
+ * @property-read $afterCreate
+ * @property-read $beforeUpdate
+ * @property-read $afterUpdate
+ * @property-read $beforeIndex
+ * @property-read $afterIndex
+ * @property-read $createRoute
+ * @property-read $indexRoute
+ * @property-read $readRoute
+ * @property-read $updateRoute
+ * @property-read $deleteRoute
+ * @property-read $prefix
  */
 class Controller implements ControllerProviderInterface
 {
     /**
      * properties
      */
-    const SUCCESS = 200;
-    const RESOURCE_CREATED = 201;
-    const SUCCESS_NO_RETURN = 204;
-    const VALIDATION_ERROR = 400;
-    const NOT_AUTHENTICATED = 401;
-    const WRONG_CREDENTIALS = 403;
-    const NOT_FOUND = 404;
-    const OTHER_ERROR = 500;
-
-    public $findByMethod = "findBy";
-    public $findAllMethod = "findAll";
-    public $findMethod = "find";
-    public $createMethod = "create";
-    public $updateMethod = "update";
-    public $deleteMethod = "remove";
-    public $countMethod = "count";
-    public $id = "id";
-    public $indexVerb = "get";
-    public $readVerb = "get";
-    public $createVerb = "post";
-    public $updateVerb = "put";
-    public $deleteVerb = "delete";
-    public $allow = array("create", "update", "read", "index", "delete", "count");
-    public $defaultFormat = "json";
-    public $formats = array("json", "xml");
-    public $resource;
-    public $resourcePluralize;
-    public $service;
-    public $model;
-    public $criteria;
-    public $beforeDelete;
-    public $afterDelete;
-    public $beforeRead;
-    public $afterRead;
-    public $beforeCreate;
-    public $afterCreate;
-    public $beforeUpdate;
-    public $afterUpdate;
-    public $beforeIndex;
-    public $afterIndex;
-    public $createRoute;
-    public $indexRoute;
-    public $readRoute;
-    public $updateRoute;
-    public $deleteRoute;
-    public $countRoute;
-    public $logger;
+    private $namespace = "mp_simplerest_";
+    private $indexVerb = 'get';
+    private $readVerb = 'get';
+    private $createVerb = 'post';
+    private $updateVerb = 'put';
+    private $deleteVerb = 'delete';
+    private $allow = array('create', 'update', 'read', 'index', 'delete', 'count');
+    private $defaultFormat = 'json';
+    private $formats = array('json', 'xml');
+    private $model;
+    private $resource;
+    private $resourcePluralize;
+    private $service;
+    private $beforeDelete;
+    private $afterDelete;
+    private $beforeRead;
+    private $afterRead;
+    private $beforeCreate;
+    private $afterCreate;
+    private $beforeUpdate;
+    private $afterUpdate;
+    private $beforeIndex;
+    private $afterIndex;
+    protected $createRoute;
+    protected $indexRoute;
+    protected $readRoute;
+    protected $updateRoute;
+    protected $deleteRoute;
+    protected $prefix = "";
+    /**
+     * @var Controller[]
+     */
+    private $children = array();
+    /**
+     * @var Controller parent rest controller
+     */
+    protected $parent;
+    /**
+     * @var callable
+     */
+    protected $customRoutesProvider;
 
     /**
      * show detail messages
@@ -90,6 +115,12 @@ class Controller implements ControllerProviderInterface
             if (property_exists($this, $key)) {
                 $this->$key = $value;
             }
+        }
+        if (NULL == $this->resource || !is_string($this->resource)) {
+            throw new Exception('Controller::resource must be a string');
+        }
+        if (!$this->service instanceof \Mparaiso\SimpleRest\Service\RestServiceInterface) {
+            throw new Exception('service parameter must be an instance of \Mparaiso\SimpleRest\Service\RestServiceInterface');
         }
         if ($this->beforeCreate == NULL) {
             $this->beforeCreate = $this->resource . "_before_create";
@@ -121,244 +152,158 @@ class Controller implements ControllerProviderInterface
         if ($this->afterIndex == NULL) {
             $this->afterIndex = $this->resource . "_after_index";
         }
-        if ($this->criteria == NULL) {
-            $this->criteria = array();
-            $reflc = new \ReflectionClass($this->model);
-            $props = $reflc->getProperties();
-            foreach ($props as $prop) {
-                array_push($this->criteria, $prop->getName());
-            }
-        }
         if ($this->resource && $this->resourcePluralize == NULL) {
             $this->resourcePluralize = $this->resource . "s";
         }
         // create route names if not specified in parameters
         if (NULL == $this->createRoute)
-            $this->createRoute = "mp_simplerest_" . $this->resource . "_create";
+            $this->createRoute = "$this->namespace{$this->resource}_create";
         if (NULL == $this->readRoute)
-            $this->readRoute = "mp_simplerest_" . $this->resource . "_read";
+            $this->readRoute = "$this->namespace{$this->resource}_read";
         if (NULL == $this->deleteRoute)
-            $this->deleteRoute = "mp_simplerest_" . $this->resource . "_delete";
+            $this->deleteRoute = "$this->namespace{$this->resource}_delete";
         if (NULL == $this->updateRoute)
-            $this->updateRoute = "mp_simplerest_" . $this->resource . "_update";
+            $this->updateRoute = "$this->namespace{$this->resource}_update";
         if (NULL == $this->indexRoute)
-            $this->indexRoute = "mp_simplerest_" . $this->resource . "_index";
-        if (NULL == $this->countRoute)
-            $this->countRoute = "mp_simplerest_" . $this->resource . "_count";
+            $this->indexRoute = "$this->namespace{$this->resource}_index";
+        if (!is_callable(array($this, 'customRoutesProvider'))) {
+            $this->customRoutesProvider = function ($controller) {
+            };
+        }
+        foreach ($this->children as $child) {
+            $child->parent = $this;
+        }
     }
 
     /**
-     * EN : magic getter<br>
      * @param $name
-     * @param $arguments
-     * @return mixed
+     * @return null|mixed
      */
     function __get($name)
     {
-        $property = lcfirst(substr($name, 3));
-        if (property_exists($this, $property)) {
-            return $this->$property;
+        $value = null;
+        if (property_exists($this, $name)) {
+            $value = $this->$name;
         }
+        return $value;
     }
 
     /**
-     * FR : liste une collection<br>
-     * EN : list a collection of resources
+     * List resources
      * @param Request $req
      * @param Application $app
-     * @return \Symfony\Component\HttpFoundation\JsonResponse
+     * @param $_format
+     * @return Response
      */
-    function index(Request $req, Application $app)
+    function index(Request $req, Application $app, $_format)
     {
-        try {
-            $limit = $req->query->get("limit", 1000);
-            $offset = $req->query->get("offset", 0);
-            $criteria = array(); // where
-            foreach ($this->criteria as $value) {
-                if ($req->query->get($value) != NULL) {
-                    $criteria[$value] = $req->query->get($value);
-                }
-            }
-            $order = array(); //order by
-            if ($req->query->has("order_by") && $req->query->has("order_order")) {
-                $order_by = $req->query->get("order_by");
-                $order_order = $req->query->get("order_order", "ASC");
-                $choices = array("ASC", "DESC");
-                if (in_array($order_order, $choices) && in_array($order_by, $this->criteria)) {
-                    $order[$order_by] = $order_order;
-                }
-            }
-
-            $app["dispatcher"]->dispatch(
-                $this->beforeIndex, new GenericEvent($criteria, array("request" => $req, "app" => $app)));
-            $collection = $this->service->{$this->findByMethod}(
-                $criteria, $order, $limit, $limit * $offset);
-            if ($collection instanceof \Traversable) {
-                $collection = iterator_to_array($collection, false);
-            }
-            $app["dispatcher"]->dispatch(
-                $this->afterIndex, new GenericEvent($collection, array("request" => $req, "app" => $app)));
-            $response = $this->makeResponse($app,$collection);
-        } catch (Exception $e) {
-            $message = $this->makeErrorMessage($e);
-            $response = $this->makeResponse(
-                $app, array("status" => self::OTHER_ERROR, "message" => $message), self::OTHER_ERROR);
-        }
+        /* @var EventDispatcher $dispatcher */
+        $dispatcher = $app['dispatcher'];
+        /* @var Serializer $serializer */
+        $serializer = $app['serializer'];
+        $query = new ArrayObject($req->query->all());
+        $parent = $this->getParentResource($req->attributes->get('parent_id'));
+        $dispatcher->dispatch($this->beforeIndex, new GenericEvent($query, array('query' => $query, 'parent' => $parent, 'controller' => $this, 'request' => $req, 'app' => $app)));
+        $collection = $this->service->findResourceBy($query);
+        $response = new Response($serializer->serialize($collection, $_format), Response::HTTP_OK);
+        $dispatcher->dispatch($this->afterIndex, new GenericEvent($collection, array('request' => $req, 'response' => $response, 'collection' => $collection, 'controller' => $this, 'app' => $app)));
         return $response;
     }
 
     /**
-     * FR : lit une resource
-     * EN : read a resource
      * @param Request $req
      * @param Application $app
      * @param $id
-     * @return \Symfony\Component\HttpFoundation\JsonResponse
+     * @param $_format
+     * @return mixed
+     * @throws \Symfony\Component\HttpKernel\Exception\NotFoundHttpException
      */
-    function read(Request $req, Application $app, $id)
+    function read(Request $req, Application $app, $id, $_format)
     {
-        try {
-            $app["dispatcher"]->dispatch(
-                $this->beforeRead, new GenericEvent($id, array("request" => $req, "app" => $app))
-            );
-            $model = $this->service->{$this->findMethod}($id);
-            if ($model == NULL) {
-                throw new HttpException(404, "resource $this->resource with id $id not found");
-            }
-            $app["dispatcher"]->dispatch(
-                $this->afterRead, new GenericEvent($model, array("request" => $req, "app" => $app))
-            );
-            $response = $this->makeResponse($app,$model);
-        } catch (HttpException $e) {
-            $message = $this->makeErrorMessage($e);
-            $response = $this->makeResponse($app,
-                array("status" => self::NOT_FOUND,
-                    "message" => $message), self::NOT_FOUND);
-        } catch (Exception $e) {
-            $message = $this->makeErrorMessage($e);
-            $response = $this->makeResponse($app,
-                array("status" => self::OTHER_ERROR,
-                    "message" => $message), self::OTHER_ERROR);
-        }
+        /* @var EventDispatcher $dispatcher */
+        $dispatcher = $app['dispatcher'];
+        /* @var Serializer $serializer */
+        $serializer = $app['serializer'];
+        $query = new ArrayObject($req->query->all());
+        $parent = $this->getParentResource($req->attributes->get('parent_id'));
+        $model = $this->service->findResource($id);
+        if (NULL == $model) throw new NotFoundHttpException("resource $this->resource with id $id not found");
+        $dispatcher->dispatch($this->beforeRead, new GenericEvent($model, array('parent' => $parent, 'request' => $req, 'controller' => $this, 'app' => $app)));
+        $response = new Response($serializer->serialize($model, $_format), Response::HTTP_OK);
+        $dispatcher->dispatch($this->afterRead, new GenericEvent($model, array('controller' => $this, 'request' => $req, 'response' => $response, 'model' => $model, 'app' => $app)));
         return $response;
-
     }
 
     /**
-     * FR : crée une resource
-     * EN : create a resource
+     * create a resource
      * @param Request $req
      * @param Application $app
-     * @return \Symfony\Component\HttpFoundation\JsonResponse
+     * @param $_format
+     * @return Response
      */
     function create(Request $req, Application $app, $_format)
     {
-        try {
-            if ($_format == "json") {
-                $data = json_decode($req->getContent(), true);
-                if (isset($data[$this->id])) {
-                    unset($data[$this->id]);
-                }
-                $model = new $this->model($data);
-            } else {
-                $model = $app["serializer"]->deserialize($req->getContent(), $this->model, $_format);
-            }
-            $app["dispatcher"]->dispatch(
-                $this->beforeCreate, new GenericEvent($model, array("request" => $req, "app" => $app)));
-            $model = $this->service->{$this->createMethod}($model);
-            $app["dispatcher"]->dispatch(
-                $this->afterCreate, new GenericEvent($model, array("request" => $req, "app" => $app, "id" => $id)));
-            $response = $app->json($model);
-        } catch (Exception $e) {
-            $message = $this->makeErrorMessage($e);
-            $response = $app->json(array("status" => self::OTHER_ERROR, "message" => $message), self::OTHER_ERROR);
-        }
+        /* @var EventDispatcher $dispatcher */
+        $dispatcher = $app['dispatcher'];
+        /* @var Serializer $serializer */
+        $serializer = $app['serializer'];
+        $model = $serializer->deserialize($req->getContent(), $this->model, $_format);
+        $dispatcher->dispatch($this->beforeCreate, new GenericEvent($model, array('controller' => $this, 'request' => $req)));
+        $model = $this->service->createResource($model);
+        $response = new Response($serializer->serialize($model, $_format), Response::HTTP_CREATED);
+        $dispatcher->dispatch($this->afterCreate, new GenericEvent($model, array('controller' => $this, 'request' => $req, 'response' => $response)));
         return $response;
     }
 
     /**
-     * FR: met à jour une resource<br>
-     * EN : upate a resource
      * @param Request $req
      * @param Application $app
      * @param $id
-     * @return \Symfony\Component\HttpFoundation\JsonResponse
+     * @param $_format
+     * @return Response
+     * @throws NotFoundHttpException
      */
     function update(Request $req, Application $app, $id, $_format)
     {
-        try {
-            $exists = $this->service->{$this->findMethod}($id);
-            if ($exists) {
-                $changes = $app["serializer"]->deserialize($req->getContent(), $this->model, $_format);
-                $app["dispatcher"]->dispatch(
-                    $this->beforeUpdate, new GenericEvent($changes, array("$this->id" => $id, "app" => $app)));
-                $result = $this->service->{$this->updateMethod}($changes, array("$this->id" => $id));
-                $app["dispatcher"]->dispatch(
-                    $this->beforeUpdate, new GenericEvent($changes, array("$this->id" => $id, "app" => $app)));
-                $response = $this->makeResponse($app, $result);
-            } else {
-                throw new Exception("resource $this->resource not found");
-            }
-        } catch (Exception $e) {
-            $message = $this->makeErrorMessage($e);
-            $response = $this->makeResponse($app,
-                array("status" => self::OTHER_ERROR, "message" => $message), self::OTHER_ERROR);
-        }
+        /* @var EventDispatcher $dispatcher */
+        $dispatcher = $app['dispatcher'];
+        /* @var Serializer $serializer */
+        $serializer = $app['serializer'];
+        $parent = $this->getParentResource($req->attributes->get('parent_id'));
+        $exists = $this->service->findResource($id);
+        if (NULL == $exists) throw new NotFoundHttpException("resource $this->resource with id $id not found");
+        $model = $serializer->deserialize($req->getContent(), $this->model, $_format);
+        $dispatcher->dispatch($this->beforeUpdate, new GenericEvent($model, array('app' => $app, 'parent' => $parent, 'id' => $id, 'request' => $req)));
+        $model = $this->service->updateResource($model);
+        $response = new Response($serializer->serialize($model, $_format), Response::HTTP_OK);
+        $dispatcher->dispatch($this->afterUpdate, new GenericEvent($model, array('response' => $response, 'id' => $id, 'request' => $req)));
         return $response;
     }
 
     /**
-     * FR : efface une resource<br>
-     * EN : delete a resource
      * @param Request $req
      * @param Application $app
      * @param $id
-     * @return \Symfony\Component\HttpFoundation\JsonResponse
+     * @param $_format
+     * @return Response
+     * @throws NotFoundHttpException
      */
-    function delete(Request $req, Application $app, $id)
+    function delete(Request $req, Application $app, $id, $_format)
     {
-        try {
-            $model = $this->service->{$this->findMethod}($id);
-            if ($model) {
-                $app["dispatcher"]->dispatch(
-                    $this->beforeDelete, new GenericEvent($model, array("app" => $app, "request" => $req)));
-                $rowsAffected = $this->service->{$this->deleteMethod}($model);
-                $app["dispatcher"]->dispatch(
-                    $this->afterDelete, new GenericEvent($model, array("app" => $app, "request" => $req)));
-
-                $response = $this->makeResponse($app,$rowsAffected);
-            } else {
-                $response = $this->makeResponse($app,
-                    array("status" => self::NOT_FOUND,), self::NOT_FOUND);
-            }
-        } catch (Exception $e) {
-            $message = $this->makeErrorMessage($e);
-            $response = $this->makeResponse($app,
-                array("status" => self::OTHER_ERROR, "message" => $message), self::OTHER_ERROR);
-        }
+        /* @var EventDispatcher $dispatcher */
+        $dispatcher = $app['dispatcher'];
+        /* @var Serializer $serializer */
+        $serializer = $app['serializer'];
+        $parent = $this->getParentResource($req->attributes->get('parent_id'));
+        $model = $this->service->findResource($id);
+        if (NULL == $model) throw new NotFoundHttpException("resource $this->resource with id $id not found");
+        $dispatcher->dispatch($this->beforeDelete, new GenericEvent($model, array('parent' => $parent, 'request' => $req, 'controller' => $this, 'app' => $app)));
+        $result = $this->service->deleteResource($model);
+        $response = new Response($serializer->serialize($result, $_format), Response::HTTP_ACCEPTED);
+        $dispatcher->dispatch($this->afterDelete, new GenericEvent($model, array('request' => $req, 'model' => $model, 'result' => $result, 'response' => $response, 'controller' => $this, 'app' => $app)));
         return $response;
     }
 
-    function count(Request $req, Application $app)
-    {
-        try {
-            $criteria = array();
-            foreach ($this->criteria as $value) {
-                if ($req->query->get($value) != NULL) {
-                    $criteria[$value] = $req->query->get($value);
-                }
-            }
-            $count = $this->service->{$this->countMethod}($criteria);
-
-            $response = $this->makeResponse($app,$count);
-        } catch (Exception $e) {
-            $message = $this->makeErrorMessage($e);
-            $response = $this->makeResponse($app,
-                array("status" => self::OTHER_ERROR, "message" => $message), self::OTHER_ERROR);
-
-        }
-        return $response;
-    }
 
     /**
      * {@inheritdoc}
@@ -366,68 +311,76 @@ class Controller implements ControllerProviderInterface
     public function connect(Application $app)
     {
         $controllers = $app["controllers_factory"];
-        /* @var \Silex\ControllerCollection $controllers */
+        /* @var ControllerCollection|Route $controllers */
         $this->addCustomRoutes($controllers);
+        # custom hooks
+        call_user_func_array($this->customRoutesProvider, array($controllers));
         if (in_array("create", $this->allow))
-            $controllers->match("/$this->resource.{_format}", array($this, "create"))
-                ->method($this->createVerb)
-                ->bind($this->createRoute);
-        if (in_array("count", $this->allow))
-            $controllers->match("/$this->resource/count.{_format}", array($this, "count"))
-                ->method($this->countMethod)
-                ->bind($this->countRoute);
+            $controllers->match("$this->prefix/$this->resource.{_format}", array($this, "create"))
+                ->bind($this->createRoute)
+                ->method($this->createVerb);
         if (in_array("update", $this->allow))
-            $controllers->match("/$this->resource/{id}.{_format}", array($this, "update"))
-                ->method($this->updateVerb)
-                ->bind($this->udpateRoute);
+            $controllers->match("$this->prefix/$this->resource/{id}.{_format}", array($this, "update"))
+                ->bind($this->updateRoute)
+                ->method($this->updateVerb);
         if (in_array("delete", $this->allow))
-            $controllers->match("/$this->resource/{id}.{_format}", array($this, "delete"))
+            $controllers->match("$this->prefix/$this->resource/{id}.{_format}", array($this, "delete"))
                 ->bind($this->deleteRoute)
                 ->method($this->deleteVerb);
         if (in_array("index", $this->allow))
-            $controllers->match("/$this->resource.{_format}", array($this, "index"))
+            $controllers->match("$this->prefix/$this->resource.{_format}", array($this, "index"))
                 ->bind($this->indexRoute)
                 ->method($this->indexVerb);
         if (in_array("read", $this->allow))
-            $controllers->match("/$this->resource/{id}.{_format}", array($this, "read"))
+            $controllers->match("$this->prefix/$this->resource/{id}.{_format}", array($this, "read"))
                 ->bind($this->readRoute)
                 ->method($this->readVerb);
         $controllers->value("_format", $this->defaultFormat)->assert("_format", implode("|", $this->formats));
+        /* mount child resource controllers */
+        foreach ($this->children as $child) {
+            $child = clone $child;
+            $child->prefix = "/$this->prefix/$this->resource/{parent_id}";
+            $child->createRoute = "$this->namespace{$this->resource}_{$child->createRoute}";
+            $child->indexRoute = "$this->namespace{$this->resource}_{$child->indexRoute}";
+            $child->readRoute = "$this->namespace{$this->resource}_{$child->readRoute}";
+            $child->updateRoute = "$this->namespace{$this->resource}_{$child->updateRoute}";
+            $child->deleteRoute = "$this->namespace{$this->resource}_{$child->deleteRoute}";
+            $child->countRoute = "$this->namespace{$this->resource}_{$child->countRoute}";
+            $child = $child->connect($app);
+            $controllers->mount("/", $child);
+        }
         return $controllers;
     }
 
-    public function addCustomRoutes(ControllerCollection $controllers)
+    /**
+     * @param Controller $controller
+     * @return $this
+     */
+    function addChild(Controller $controller)
+    {
+        $this->children[] = $controller;
+        $controller->parent = $this;
+        return $this;
+    }
+
+    /**
+     * @param ControllerCollection $controllers
+     */
+    protected function addCustomRoutes(ControllerCollection $controllers)
     {
     }
 
     /**
-     * FR : selon le format demandé , renvoyer du XML ou du JSON<br>
-     * EN : given a format request , return a xml or a json response
-     * @param Application $app
-     * @param $data
-     * @param int $status
-     * @param array $headers
-     * @return \Symfony\Component\HttpFoundation\JsonResponse|Response
+     * @param string|int $parent_id
+     * @return null|mixed
      */
-    function makeResponse(Application $app, $data, $status = 200, $headers = array())
+    protected function getParentResource($parent_id)
     {
-        $request = $app['request'];
-        /* @var Request $request */
-        $_format = $request->attributes->get("_format");
-        array_merge($headers, array("Content-Type" => $app['request']->getMimeType($_format)));
-        return new Response($app['serializer']->serialize($data, $_format), $status, $headers);
+        $parent = NULL;
+        if ($this->parent) {
+            $parent = $this->parent->service->findResource($parent_id);
+        }
+        return $parent;
     }
 
-    function makeErrorMessage(Exception $e)
-    {
-        if ($this->logger) {
-            $this->logger->err($e->getMessage());
-        }
-        if ($this->debug) {
-            $message = $e->getMessage();
-        } else {
-            $message = $this->defaultErrorMessage;
-        }
-        return $message;
-    }
 }

@@ -9,9 +9,19 @@
     ],
     "homepage": "https://github.com/Mparaiso/silex-simplerest",
     "license": "LGPL",
-    "autoload":{
-        "psr-0":{
-            "Mparaiso":"lib"
+    "require": {
+    },
+    "autoload": {
+        "psr-0": {
+            "Mparaiso": "lib"
         }
+    },
+    "require-dev": {
+        "silex/silex": "1.*",
+        "symfony/serializer": "2.*",
+        "symfony/browser-kit": "2.*",
+        "symfony/css-selector": "2.*",
+        "mparaiso/consoleserviceprovider": "*",
+        "phpunit/phpunit": "*"
     }
 }

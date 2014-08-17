@@ -8,8 +8,11 @@ author: Mparaiso <mparaiso@online.fr>
 
 status: WORK IN PROGRESS  , come back soon !
 
+####Usage:
 
-CHANGELOG:
+see demo folder.
+
+####CHANGELOG:
 
 0.2.0 :
 

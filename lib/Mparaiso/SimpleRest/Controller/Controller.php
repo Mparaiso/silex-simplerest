@@ -52,9 +52,7 @@ use Symfony\Component\Serializer\Serializer;
  */
 class Controller implements ControllerProviderInterface
 {
-    /**
-     * properties
-     */
+
     private $namespace = "mp_simplerest_";
     private $indexVerb = 'get';
     private $readVerb = 'get';
@@ -97,12 +95,6 @@ class Controller implements ControllerProviderInterface
      */
     protected $customRoutesProvider;
 
-    /**
-     * show detail messages
-     * @var string
-     */
-    protected $debug;
-    protected $defaultErrorMessage = "Error";
 
     /**
      * FR : constructeur<br>
